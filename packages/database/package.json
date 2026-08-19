@@ -1,0 +1,17 @@
+{
+  "name": "@terrax/database",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@prisma/client": "latest"
+  },
+  "devDependencies": {
+    "prisma": "latest",
+    "typescript": "latest"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@terrax/otel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opentelemetry/otlp-transformer": "latest"
+  },
+  "devDependencies": {
+    "typescript": "latest"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "terrax",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun --filter @terrax/api dev",
+    "build": "bun --filter '*' build",
+    "typecheck": "bun --filter '*' typecheck",
+    "lint": "biome check .",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "latest",
+    "typescript": "latest"
+  }
+}
