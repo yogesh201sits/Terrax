@@ -43,7 +43,7 @@
     "packages/otel": {
       "name": "@terrax/otel",
       "dependencies": {
-        "@opentelemetry/otlp-transformer": "latest",
+        "@opentelemetry/otlp-transformer": "^0.221.0",
       },
       "devDependencies": {
         "typescript": "latest",
