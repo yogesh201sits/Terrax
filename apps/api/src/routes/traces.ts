@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { decodeTraces, normalizeTraces } from "@terrax/otel";
 import { ingestTraces } from "../services/trace-ingestion";
+import { getTrace } from "../services/trace-query";
 import { authMiddleware } from "../middleware/auth";
 import type { AppVariables } from "../types";
 
@@ -23,6 +24,28 @@ traces.post(
     await ingestTraces(projectId, normalized);
 
     return c.body(null, 200);
+  },
+);
+
+traces.get(
+  "/traces/:traceId",
+  authMiddleware,
+  async (c) => {
+    const projectId = c.get("projectId");
+    const traceId = c.req.param("traceId");
+
+    const trace = await getTrace(projectId, traceId);
+
+    if (!trace) {
+      return c.json(
+        {
+          error: "Trace not found",
+        },
+        404,
+      );
+    }
+
+    return c.json(trace);
   },
 );
 

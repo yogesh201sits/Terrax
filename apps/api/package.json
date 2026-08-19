@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/server.ts",
+    "start": "bun src/server.ts",
     "build": "bun build src/server.ts --outdir dist",
     "typecheck": "tsc --noEmit"
   },
