@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -12,23 +10,67 @@ datasource db {
   provider = "postgresql"
 }
 
-model Trace {
-  id        String   @id @default(cuid())
-  traceId   String   @unique
+model Project {
+  id        String   @id @default(uuid())
+  name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  spans Span[]
+  apiKeys ApiKey[]
+  traces  Trace[]
+
+  @@map("projects")
+}
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  keyHash   String   @unique
+  projectId String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("api_keys")
+}
+
+model Trace {
+  id        String   @id @default(uuid())
+  projectId String
+  traceId   String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  spans   Span[]
+
+  @@unique([projectId, traceId])
+  @@index([projectId])
+  @@map("traces")
 }
 
 model Span {
-  id        String   @id @default(cuid())
-  spanId    String   @unique
-  traceId   String
+  id           String  @id @default(uuid())
+  traceId      String
+  spanId       String
+  parentSpanId String?
+
   name      String
+  startTime DateTime
+  endTime   DateTime
+
+  status     Json?
+  attributes Json?
+  events     Json?
+  resource   Json?
+
+  traceIdRef String
+  trace      Trace  @relation(fields: [traceIdRef], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
 
-  trace Trace @relation(fields: [traceId], references: [traceId], onDelete: Cascade)
-
+  @@unique([traceId, spanId])
   @@index([traceId])
+  @@index([parentSpanId])
+  @@index([traceIdRef])
+  @@map("spans")
 }
