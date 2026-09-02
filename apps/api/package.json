@@ -12,6 +12,7 @@
     "@terrax/database": "workspace:*",
     "@terrax/otel": "workspace:*",
     "@terrax/shared": "workspace:*",
+    "@terrax/semantic": "workspace:*",
     "hono": "latest"
   },
   "devDependencies": {

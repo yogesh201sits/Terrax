@@ -1,10 +1,16 @@
 import { prisma } from "@terrax/database";
+import {
+  extractSemanticSpan,
+  buildTraceTree,
+  type RawSpan,
+  type SemanticSpan,
+} from "@terrax/semantic";
 
 export async function getTrace(
   projectId: string,
   traceId: string,
 ) {
-  return prisma.trace.findUnique({
+  const trace = await prisma.trace.findUnique({
     where: {
       projectId_traceId: {
         projectId,
@@ -33,4 +39,48 @@ export async function getTrace(
       },
     },
   });
+
+  if (!trace) {
+    return null;
+  }
+
+  const rawSpans: RawSpan[] = trace.spans.map((span) => {
+    let status: string | undefined;
+
+    if (typeof span.status === "string") {
+      status = span.status;
+    } else {
+      status = undefined;
+    }
+
+    return {
+      traceId: span.traceId,
+      spanId: span.spanId,
+      parentSpanId: span.parentSpanId,
+      name: span.name,
+
+      startTime: span.startTime.toISOString(),
+      endTime: span.endTime.toISOString(),
+
+      status,
+
+      attributes: span.attributes as Record<string, unknown>,
+
+      events: span.events as unknown[],
+      resource: span.resource as Record<string, unknown>,
+    };
+  });
+
+  const semanticSpans: SemanticSpan[] = rawSpans.map(
+    (span) => extractSemanticSpan(span),
+  );
+
+  const tree = buildTraceTree(semanticSpans);
+
+  return {
+    traceId: trace.traceId,
+    createdAt: trace.createdAt,
+    spans: trace.spans,
+    tree,
+  };
 }
