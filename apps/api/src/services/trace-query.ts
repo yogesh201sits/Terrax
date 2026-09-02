@@ -1,4 +1,5 @@
 import { prisma } from "@terrax/database";
+
 import {
   extractSemanticSpan,
   buildTraceTree,
@@ -6,10 +7,13 @@ import {
   type SemanticSpan,
 } from "@terrax/semantic";
 
+import type { TraceResponse } from "../types/trace-response.js";
+import { toTraceTreeNodeResponse } from "./trace-response.js";
+
 export async function getTrace(
   projectId: string,
   traceId: string,
-) {
+): Promise<TraceResponse | null> {
   const trace = await prisma.trace.findUnique({
     where: {
       projectId_traceId: {
@@ -17,9 +21,11 @@ export async function getTrace(
         traceId,
       },
     },
+
     select: {
       traceId: true,
       createdAt: true,
+
       spans: {
         select: {
           traceId: true,
@@ -33,6 +39,7 @@ export async function getTrace(
           events: true,
           resource: true,
         },
+
         orderBy: {
           startTime: "asc",
         },
@@ -49,8 +56,6 @@ export async function getTrace(
 
     if (typeof span.status === "string") {
       status = span.status;
-    } else {
-      status = undefined;
     }
 
     return {
@@ -64,23 +69,33 @@ export async function getTrace(
 
       status,
 
-      attributes: span.attributes as Record<string, unknown>,
+      attributes:
+        span.attributes as Record<string, unknown>,
 
       events: span.events as unknown[],
-      resource: span.resource as Record<string, unknown>,
+
+      resource:
+        span.resource as Record<string, unknown>,
     };
   });
 
-  const semanticSpans: SemanticSpan[] = rawSpans.map(
-    (span) => extractSemanticSpan(span),
-  );
+  const semanticSpans: SemanticSpan[] =
+    rawSpans.map((span) => {
+      return extractSemanticSpan(span);
+    });
 
   const tree = buildTraceTree(semanticSpans);
 
   return {
     traceId: trace.traceId,
     createdAt: trace.createdAt,
-    spans: trace.spans,
-    tree,
+
+    tree: {
+      traceId: trace.traceId,
+
+      roots: tree.roots.map((root) => {
+        return toTraceTreeNodeResponse(root);
+      }),
+    },
   };
 }
