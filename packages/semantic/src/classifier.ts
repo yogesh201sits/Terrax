@@ -23,38 +23,63 @@ export function classifySpan(span: RawSpan): SemanticType {
     "langsmith.trace.name",
   );
 
+  const integration = getStringAttribute(
+    attributes,
+    "langsmith.metadata.ls_integration",
+  );
+
   const spanName = span.name.toLowerCase();
 
+  // Strong LLM signal
   if (spanKind === "llm") {
     return "llm";
   }
 
+  // Strong tool signal
   if (spanKind === "tool") {
     return "tool";
   }
 
+  // LangGraph node
   if (langgraphNode) {
     return "workflow_node";
   }
 
+  // LangGraph root workflow
   if (
-    traceName === "LangGraph" ||
-    spanName.includes("graph") ||
-    spanName.includes("workflow") ||
-    spanName.includes("agent")
+    traceName === "LangGraph" &&
+    genAiOperation === "chain"
   ) {
     return "workflow";
   }
 
-  if (genAiOperation === "chat") {
+  // Other obvious workflow roots
+  if (
+    spanName.includes("graph") ||
+    spanName.includes("workflow")
+  ) {
+    return "workflow";
+  }
+
+  // Generic GenAI LLM
+  if (
+    genAiOperation === "chat"
+  ) {
     return "llm";
   }
 
-  if (genAiOperation === "execute_tool") {
+  // Generic tool execution
+  if (
+    genAiOperation === "execute_tool"
+  ) {
     return "tool";
   }
 
-  if (spanKind === "chain") {
+  // LangChain chain without LangGraph node metadata
+  if (
+    spanKind === "chain" &&
+    integration?.startsWith("langchain")
+  ) {
     return "workflow_node";
   }
 
