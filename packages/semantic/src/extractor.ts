@@ -1,4 +1,5 @@
 import { classifySpan } from "./classifier.js";
+
 import type {
   RawSpan,
   SemanticSpan
@@ -26,9 +27,6 @@ export function extractSemanticSpan(
 
   /*
    * Framework
-   *
-   * LangChain/LangGraph spans expose their integration
-   * through langsmith.metadata.ls_integration.
    */
   const integration = getString(
     attributes,
@@ -85,6 +83,72 @@ export function extractSemanticSpan(
     "gen_ai.usage.total_tokens"
   );
 
+  if (span.status) {
+    semanticSpan.status = span.status;
+  }
+
+  /*
+   * Prompt
+   */
+  const prompt = getJson(
+    attributes,
+    "gen_ai.prompt"
+  );
+
+  if (prompt !== undefined) {
+    semanticSpan.prompt = prompt;
+  }
+
+  /*
+   * Completion
+   */
+  const completion = getJson(
+    attributes,
+    "gen_ai.completion"
+  );
+
+  if (completion !== undefined) {
+    semanticSpan.completion = completion;
+  }
+
+  /*
+   * Tool calls
+   */
+  const toolCalls = extractToolCalls(prompt);
+
+  if (toolCalls.length > 0) {
+    semanticSpan.toolCalls = toolCalls;
+  }
+
+  /*
+ * Tool input
+ */
+const toolInput = extractToolInput(prompt);
+
+if (toolInput !== undefined) {
+  semanticSpan.toolInput = toolInput;
+}
+
+/*
+ * Tool output
+ */
+const toolOutput = extractToolOutput(completion);
+
+if (toolOutput !== undefined) {
+  semanticSpan.toolOutput = toolOutput;
+}
+
+  /*
+   * Reasoning tokens
+   */
+  const reasoningTokens =
+    extractReasoningTokens(prompt);
+
+  if (reasoningTokens !== undefined) {
+    semanticSpan.reasoningTokens =
+      reasoningTokens;
+  }
+
   return semanticSpan;
 }
 
@@ -112,4 +176,179 @@ function getNumber(
   }
 
   return undefined;
+}
+
+function getJson(
+  attributes: Record<string, unknown>,
+  key: string
+): unknown | undefined {
+  const value = attributes[key];
+
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function extractToolCalls(
+  prompt: unknown
+): unknown[] {
+  if (!prompt || typeof prompt !== "object") {
+    return [];
+  }
+
+  const messages = (
+    prompt as {
+      messages?: unknown;
+    }
+  ).messages;
+
+  if (!Array.isArray(messages)) {
+    return [];
+  }
+
+  const toolCalls: unknown[] = [];
+
+  for (const message of messages) {
+    if (
+      !message ||
+      typeof message !== "object"
+    ) {
+      continue;
+    }
+
+    const calls = (
+      message as {
+        tool_calls?: unknown;
+      }
+    ).tool_calls;
+
+    if (!Array.isArray(calls)) {
+      continue;
+    }
+
+    for (const call of calls) {
+      toolCalls.push(call);
+    }
+  }
+
+  return toolCalls;
+}
+
+function extractReasoningTokens(
+  prompt: unknown
+): number | undefined {
+  if (!prompt || typeof prompt !== "object") {
+    return undefined;
+  }
+
+  const messages = (
+    prompt as {
+      messages?: unknown;
+    }
+  ).messages;
+
+  if (!Array.isArray(messages)) {
+    return undefined;
+  }
+
+  for (const message of messages) {
+    if (
+      !message ||
+      typeof message !== "object"
+    ) {
+      continue;
+    }
+
+    const usageMetadata = (
+      message as {
+        usage_metadata?: unknown;
+      }
+    ).usage_metadata;
+
+    if (
+      !usageMetadata ||
+      typeof usageMetadata !== "object"
+    ) {
+      continue;
+    }
+
+    const outputTokenDetails = (
+      usageMetadata as {
+        output_token_details?: unknown;
+      }
+    ).output_token_details;
+
+    if (
+      !outputTokenDetails ||
+      typeof outputTokenDetails !== "object"
+    ) {
+      continue;
+    }
+
+    const reasoning = (
+      outputTokenDetails as {
+        reasoning?: unknown;
+      }
+    ).reasoning;
+
+    if (typeof reasoning === "number") {
+      return reasoning;
+    }
+  }
+
+  return undefined;
+}
+
+function extractToolInput(
+  prompt: unknown
+): unknown | undefined {
+  if (!prompt || typeof prompt !== "object") {
+    return undefined;
+  }
+
+  const input = (
+    prompt as {
+      input?: unknown;
+    }
+  ).input;
+
+  if (!Array.isArray(input)) {
+    return undefined;
+  }
+
+  if (input.length === 0) {
+    return undefined;
+  }
+
+  return input;
+}
+
+function extractToolOutput(
+  completion: unknown
+): unknown | undefined {
+  if (!completion || typeof completion !== "object") {
+    return undefined;
+  }
+
+  const messages = (
+    completion as {
+      messages?: unknown;
+    }
+  ).messages;
+
+  if (!Array.isArray(messages)) {
+    return undefined;
+  }
+
+  if (messages.length === 0) {
+    return undefined;
+  }
+
+  return messages;
 }
