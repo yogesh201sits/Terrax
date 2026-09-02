@@ -5,22 +5,26 @@ export function classifySpan(span: RawSpan): SemanticType {
 
   const spanKind = getStringAttribute(
     attributes,
-    "langsmith.span.kind"
+    "langsmith.span.kind",
   );
 
   const genAiOperation = getStringAttribute(
     attributes,
-    "gen_ai.operation.name"
+    "gen_ai.operation.name",
   );
 
   const langgraphNode = getStringAttribute(
     attributes,
-    "langgraph.node"
+    "langsmith.metadata.langgraph_node",
+  );
+
+  const traceName = getStringAttribute(
+    attributes,
+    "langsmith.trace.name",
   );
 
   const spanName = span.name.toLowerCase();
 
-  // Strong framework-specific signals
   if (spanKind === "llm") {
     return "llm";
   }
@@ -33,7 +37,15 @@ export function classifySpan(span: RawSpan): SemanticType {
     return "workflow_node";
   }
 
-  // Standard GenAI semantic conventions
+  if (
+    traceName === "LangGraph" ||
+    spanName.includes("graph") ||
+    spanName.includes("workflow") ||
+    spanName.includes("agent")
+  ) {
+    return "workflow";
+  }
+
   if (genAiOperation === "chat") {
     return "llm";
   }
@@ -42,19 +54,7 @@ export function classifySpan(span: RawSpan): SemanticType {
     return "tool";
   }
 
-  // Generic workflow hints
-  if (
-    spanKind === "chain" &&
-    !genAiOperation
-  ) {
-    if (
-      spanName.includes("graph") ||
-      spanName.includes("workflow") ||
-      spanName.includes("agent")
-    ) {
-      return "workflow";
-    }
-
+  if (spanKind === "chain") {
     return "workflow_node";
   }
 
@@ -63,13 +63,13 @@ export function classifySpan(span: RawSpan): SemanticType {
 
 function getStringAttribute(
   attributes: Record<string, unknown>,
-  key: string
+  key: string,
 ): string | undefined {
   const value = attributes[key];
 
-  if (typeof value !== "string") {
-    return undefined;
+  if (typeof value === "string") {
+    return value;
   }
 
-  return value;
+  return undefined;
 }

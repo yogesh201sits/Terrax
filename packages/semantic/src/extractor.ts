@@ -24,15 +24,28 @@ export function extractSemanticSpan(
     attributes
   };
 
-  const framework = getString(
+  /*
+   * Framework
+   *
+   * LangChain/LangGraph spans expose their integration
+   * through langsmith.metadata.ls_integration.
+   */
+  const integration = getString(
     attributes,
-    "gen_ai.system"
+    "langsmith.metadata.ls_integration"
   );
 
-  if (framework) {
-    semanticSpan.framework = framework;
+  if (integration) {
+    if (integration.startsWith("langchain")) {
+      semanticSpan.framework = "langchain";
+    } else {
+      semanticSpan.framework = integration;
+    }
   }
 
+  /*
+   * Provider
+   */
   const provider = getString(
     attributes,
     "langsmith.metadata.ls_provider"
@@ -42,6 +55,9 @@ export function extractSemanticSpan(
     semanticSpan.provider = provider;
   }
 
+  /*
+   * Model
+   */
   const model = getString(
     attributes,
     "gen_ai.request.model"
@@ -51,6 +67,9 @@ export function extractSemanticSpan(
     semanticSpan.model = model;
   }
 
+  /*
+   * Token usage
+   */
   semanticSpan.inputTokens = getNumber(
     attributes,
     "gen_ai.usage.input_tokens"
