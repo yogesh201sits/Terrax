@@ -58,6 +58,8 @@ export interface SemanticSpan {
   toolOutput?: unknown;
 
   status?: string;
+  errorType?: string;
+  errorMessage?: string;
 
   startTime: string;
 

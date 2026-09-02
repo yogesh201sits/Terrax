@@ -9,19 +9,49 @@ const traces = new Hono<{
   Variables: AppVariables;
 }>();
 
+// traces.post(
+//   "/traces",
+//   authMiddleware,
+//   async (c) => {
+//     const body = await c.req.arrayBuffer();
+//     const payload = new Uint8Array(body);
+
+//     const decoded = decodeTraces(payload);
+//     const normalized = normalizeTraces(decoded);
+
+//     const projectId = c.get("projectId");
+
+//     await ingestTraces(projectId, normalized);
+
+//     return c.body(null, 200);
+//   },
+// );
 traces.post(
   "/traces",
   authMiddleware,
   async (c) => {
+    console.log("[TRACES] Request received");
+
     const body = await c.req.arrayBuffer();
+    console.log("[TRACES] Body received:", body.byteLength);
+
     const payload = new Uint8Array(body);
 
+    console.log("[TRACES] Decoding...");
     const decoded = decodeTraces(payload);
+    console.log("[TRACES] Decoding completed");
+
+    console.log("[TRACES] Normalizing...");
     const normalized = normalizeTraces(decoded);
+    console.log("[TRACES] Normalizing completed");
 
     const projectId = c.get("projectId");
 
+    console.log("[TRACES] Ingesting...");
     await ingestTraces(projectId, normalized);
+    console.log("[TRACES] Ingestion completed");
+
+    console.log("[TRACES] Returning 200");
 
     return c.body(null, 200);
   },
