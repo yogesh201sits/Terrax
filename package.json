@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "dev": "bun --filter @terrax/api dev",
+    "dev:server": "bun run --cwd apps/api dev",
     "build": "bun --filter '*' build",
     "typecheck": "bun --filter '*' typecheck",
     "lint": "biome check .",

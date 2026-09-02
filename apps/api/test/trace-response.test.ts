@@ -122,4 +122,87 @@ describe("Trace Response", () => {
   expect(llm.span.totalTokens).toBe(199);
   expect(llm.span.durationMs).toBe(851);
 });
+test("includes LLM semantic metadata", () => {
+  const tree = {
+    span: {
+      traceId: "trace-1",
+      spanId: "llm-1",
+      parentSpanId: "model-1",
+
+      type: "llm" as const,
+      name: "ChatGroq",
+
+      startTime: "2026-09-01T18:59:15.689Z",
+      endTime: "2026-09-01T18:59:16.540Z",
+
+      attributes: {},
+
+      framework: "langchain",
+      provider: "groq",
+      model: "openai/gpt-oss-120b",
+
+      inputTokens: 137,
+      outputTokens: 62,
+      totalTokens: 199,
+      reasoningTokens: 34,
+
+      prompt: {
+        messages: [
+          {
+            content: "What is the weather in Pune?",
+            type: "human",
+          },
+        ],
+      },
+
+      completion: {
+        output: "The weather in Pune is sunny and 28°C.",
+      },
+
+      toolCalls: [
+        {
+          name: "get_weather",
+          args: {
+            city: "Pune",
+          },
+        },
+      ],
+    },
+
+    children: [],
+  };
+
+  const result = toTraceTreeNodeResponse(tree);
+
+  expect(result.span.type).toBe("llm");
+  expect(result.span.name).toBe("ChatGroq");
+
+  expect(result.span.provider).toBe("groq");
+  expect(result.span.model).toBe(
+    "openai/gpt-oss-120b"
+  );
+
+  expect(result.span.inputTokens).toBe(137);
+  expect(result.span.outputTokens).toBe(62);
+  expect(result.span.totalTokens).toBe(199);
+  expect(result.span.reasoningTokens).toBe(34);
+
+  expect(result.span.prompt).toEqual({
+    messages: [
+      {
+        content: "What is the weather in Pune?",
+        type: "human",
+      },
+    ],
+  });
+
+  expect(result.span.toolCalls).toEqual([
+    {
+      name: "get_weather",
+      args: {
+        city: "Pune",
+      },
+    },
+  ]);
+});
 });

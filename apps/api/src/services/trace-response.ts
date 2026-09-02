@@ -52,6 +52,34 @@ function toTraceSpanResponse(
     response.totalTokens = span.totalTokens;
   }
 
+  if (span.reasoningTokens !== undefined) {
+    response.reasoningTokens = span.reasoningTokens;
+  }
+
+  if (span.prompt !== undefined) {
+    response.prompt = span.prompt;
+  }
+
+  if (span.completion !== undefined) {
+    response.completion = span.completion;
+  }
+
+  if (span.toolCalls !== undefined) {
+    response.toolCalls = span.toolCalls;
+  }
+
+  if (span.toolInput !== undefined) {
+    response.toolInput = span.toolInput;
+  }
+
+  if (span.toolOutput !== undefined) {
+    response.toolOutput = span.toolOutput;
+  }
+
+  if (span.status !== undefined) {
+    response.status = span.status;
+  }
+
   return response;
 }
 
