@@ -80,6 +80,14 @@ function toTraceSpanResponse(
     response.status = span.status;
   }
 
+  if (span.errorType !== undefined) {
+    response.errorType = span.errorType;
+  }
+
+  if (span.errorMessage !== undefined) {
+    response.errorMessage = span.errorMessage;
+  }
+
   return response;
 }
 

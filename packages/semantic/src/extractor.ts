@@ -120,6 +120,16 @@ export function extractSemanticSpan(
     semanticSpan.toolCalls = toolCalls;
   }
 
+  const error = extractError(
+    attributes,
+    span.events,
+  );
+
+  if (error) {
+    semanticSpan.errorType = error.type;
+    semanticSpan.errorMessage = error.message;
+  }
+
   /*
  * Tool input
  */
@@ -351,4 +361,114 @@ function extractToolOutput(
   }
 
   return messages;
+}
+
+function extractError(
+  attributes: Record<string, unknown>,
+  events?: unknown[],
+): {
+  type?: string;
+  message?: string;
+} | undefined {
+  const errorType = getString(
+    attributes,
+    "error.type",
+  );
+
+  const errorMessage = getString(
+    attributes,
+    "error.message",
+  );
+
+  if (errorType || errorMessage) {
+    return {
+      type: errorType,
+      message: errorMessage,
+    };
+  }
+
+  if (!events) {
+    return undefined;
+  }
+
+  for (const event of events) {
+    if (
+      !event ||
+      typeof event !== "object"
+    ) {
+      continue;
+    }
+
+    const eventObject = event as {
+      name?: unknown;
+      attributes?: unknown;
+    };
+
+    if (eventObject.name !== "exception") {
+      continue;
+    }
+
+    if (
+      !eventObject.attributes ||
+      !Array.isArray(eventObject.attributes)
+    ) {
+      continue;
+    }
+
+    let exceptionType: string | undefined;
+    let exceptionMessage: string | undefined;
+
+    for (const attribute of eventObject.attributes) {
+      if (
+        !attribute ||
+        typeof attribute !== "object"
+      ) {
+        continue;
+      }
+
+      const item = attribute as {
+        key?: unknown;
+        value?: unknown;
+      };
+
+      if (
+        typeof item.key !== "string" ||
+        !item.value ||
+        typeof item.value !== "object"
+      ) {
+        continue;
+      }
+
+      const value = item.value as {
+        stringValue?: unknown;
+      };
+
+      if (
+        typeof value.stringValue !== "string"
+      ) {
+        continue;
+      }
+
+      if (
+        item.key === "exception.type"
+      ) {
+        exceptionType = value.stringValue;
+      }
+
+      if (
+        item.key === "exception.message"
+      ) {
+        exceptionMessage = value.stringValue;
+      }
+    }
+
+    if (exceptionType || exceptionMessage) {
+      return {
+        type: exceptionType,
+        message: exceptionMessage,
+      };
+    }
+  }
+
+  return undefined;
 }
