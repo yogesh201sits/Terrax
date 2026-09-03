@@ -10,7 +10,7 @@ const traces = new Hono<{
 }>();
 
 traces.get(
-  "/",
+  "/traces",
   authMiddleware,
   async (c) => {
     const projectId = c.get("projectId");
