@@ -12,13 +12,16 @@ export function TraceTree({ roots }: Props) {
     useState<TraceTreeNode | null>(null);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="rounded-lg border">
         <div className="border-b px-5 py-4">
           <h2 className="font-semibold">Execution</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Trace execution hierarchy
+          </p>
         </div>
 
-        <div className="p-4">
+        <div className="p-3">
           {roots.map((root) => (
             <TraceTreeNodeView
               key={root.span.spanId}
@@ -26,6 +29,7 @@ export function TraceTree({ roots }: Props) {
               depth={0}
               selectedSpanId={selectedNode?.span.spanId}
               onSelect={setSelectedNode}
+              isLast
             />
           ))}
         </div>
@@ -41,6 +45,7 @@ type NodeProps = {
   depth: number;
   selectedSpanId?: string;
   onSelect: (node: TraceTreeNode) => void;
+  isLast: boolean;
 };
 
 function TraceTreeNodeView({
@@ -48,6 +53,7 @@ function TraceTreeNodeView({
   depth,
   selectedSpanId,
   onSelect,
+  isLast,
 }: NodeProps) {
   const [expanded, setExpanded] = useState(true);
 
@@ -57,76 +63,139 @@ function TraceTreeNodeView({
   const isSelected = selectedSpanId === span.spanId;
 
   return (
-    <div>
+    <div className="relative">
+      {depth > 0 && (
+        <div
+          className={`absolute left-3 top-0 w-px bg-border ${
+            isLast ? "h-5" : "bottom-0"
+          }`}
+        />
+      )}
+
       <div
-        className={`flex items-center gap-2 rounded-md px-2 py-2 hover:bg-muted/50 ${
-          isSelected ? "bg-muted" : ""
-        }`}
-        style={{ paddingLeft: `${depth * 24 + 8}px` }}
+        className="relative flex items-center"
+        style={{
+          paddingLeft: `${depth * 28}px`,
+        }}
       >
-        {hasChildren ? (
+        {depth > 0 && (
+          <div className="absolute left-3 top-1/2 w-4 border-t border-border" />
+        )}
+
+        <div
+          className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 transition-colors ${
+            isSelected
+              ? "bg-muted"
+              : "hover:bg-muted/50"
+          }`}
+        >
+          {hasChildren ? (
+            <button
+              type="button"
+              onClick={() => setExpanded(!expanded)}
+              className="flex size-5 shrink-0 items-center justify-center rounded text-xs text-muted-foreground hover:bg-background"
+              aria-label={
+                expanded ? "Collapse span" : "Expand span"
+              }
+            >
+              {expanded ? "⌄" : "›"}
+            </button>
+          ) : (
+            <span className="size-5 shrink-0" />
+          )}
+
           <button
             type="button"
-            onClick={() => setExpanded(!expanded)}
-            className="flex size-5 items-center justify-center text-xs text-muted-foreground"
+            onClick={() => onSelect(node)}
+            className="flex min-w-0 flex-1 items-center gap-2 text-left"
           >
-            {expanded ? "▼" : "▶"}
+            <SpanIcon type={span.type} />
+
+            <span className="truncate text-sm font-medium">
+              {span.name}
+            </span>
+
+            <SpanType type={span.type} />
+
+            {span.provider && (
+              <span className="hidden text-xs text-muted-foreground md:inline">
+                {span.provider}
+              </span>
+            )}
+
+            {span.model && (
+              <span className="hidden max-w-[180px] truncate text-xs text-muted-foreground lg:inline">
+                {span.model}
+              </span>
+            )}
+
+            {span.type === "llm" &&
+              span.totalTokens !== undefined && (
+                <span className="hidden text-xs text-muted-foreground xl:inline">
+                  {span.totalTokens} tokens
+                </span>
+              )}
           </button>
-        ) : (
-          <span className="size-5" />
-        )}
 
-        <button
-          type="button"
-          onClick={() => onSelect(node)}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
-        >
-          <span className="truncate font-medium">
-            {span.name}
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {formatDuration(span.durationMs)}
           </span>
 
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-            {span.type}
-          </span>
-
-          {span.provider && (
-            <span className="text-xs text-muted-foreground">
-              {span.provider}
+          {isError && (
+            <span className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium text-destructive">
+              ERROR
             </span>
           )}
-
-          {span.model && (
-            <span className="max-w-[180px] truncate text-xs text-muted-foreground">
-              {span.model}
-            </span>
-          )}
-        </button>
-
-        <span className="shrink-0 text-xs text-muted-foreground">
-          {formatDuration(span.durationMs)}
-        </span>
-
-        {isError && (
-          <span className="text-xs font-medium text-destructive">
-            ERROR
-          </span>
-        )}
+        </div>
       </div>
 
       {expanded && hasChildren && (
         <div>
-          {node.children.map((child) => (
+          {node.children.map((child, index) => (
             <TraceTreeNodeView
               key={child.span.spanId}
               node={child}
               depth={depth + 1}
               selectedSpanId={selectedSpanId}
               onSelect={onSelect}
+              isLast={index === node.children.length - 1}
             />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function SpanIcon({
+  type,
+}: {
+  type: TraceTreeNode["span"]["type"];
+}) {
+  const icons = {
+    workflow: "W",
+    workflow_node: "N",
+    llm: "L",
+    tool: "T",
+    generic: "S",
+  };
+
+  return (
+    <span className="flex size-6 shrink-0 items-center justify-center rounded border text-[10px] font-semibold">
+      {icons[type]}
+    </span>
+  );
+}
+
+function SpanType({
+  type,
+}: {
+  type: TraceTreeNode["span"]["type"];
+}) {
+  return (
+    <span className="hidden rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">
+      {type}
+    </span>
   );
 }
 
@@ -137,9 +206,11 @@ function SpanDetails({
 }) {
   if (!node) {
     return (
-      <div className="rounded-lg border">
-        <div className="p-6 text-center text-sm text-muted-foreground">
-          Select a span to inspect its details.
+      <div className="h-fit rounded-lg border">
+        <div className="p-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            Select a span to inspect its details.
+          </p>
         </div>
       </div>
     );
@@ -150,16 +221,19 @@ function SpanDetails({
   return (
     <div className="h-fit rounded-lg border">
       <div className="border-b px-5 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-semibold">{span.name}</h2>
-            <p className="text-xs text-muted-foreground">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="truncate font-semibold">
+              {span.name}
+            </h2>
+
+            <p className="mt-1 text-xs text-muted-foreground">
               {span.type}
             </p>
           </div>
 
           {span.errorMessage && (
-            <span className="text-xs font-medium text-destructive">
+            <span className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium text-destructive">
               ERROR
             </span>
           )}
@@ -167,57 +241,47 @@ function SpanDetails({
       </div>
 
       <div className="space-y-5 p-5">
-        <DetailRow label="Duration">
-          {formatDuration(span.durationMs)}
-        </DetailRow>
+        <div className="grid grid-cols-2 gap-3">
+          <InfoItem
+            label="Duration"
+            value={formatDuration(span.durationMs)}
+          />
 
-        {span.framework && (
-          <DetailRow label="Framework">
-            {span.framework}
-          </DetailRow>
-        )}
+          <InfoItem
+            label="Framework"
+            value={span.framework ?? "—"}
+          />
 
-        {span.provider && (
-          <DetailRow label="Provider">
-            {span.provider}
-          </DetailRow>
-        )}
+          {span.provider && (
+            <InfoItem
+              label="Provider"
+              value={span.provider}
+            />
+          )}
 
-        {span.model && (
-          <DetailRow label="Model">
-            {span.model}
-          </DetailRow>
-        )}
+          {span.model && (
+            <InfoItem
+              label="Model"
+              value={span.model}
+            />
+          )}
+        </div>
 
-        {(span.inputTokens !== undefined ||
-          span.outputTokens !== undefined ||
-          span.totalTokens !== undefined) && (
-          <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">
-              Tokens
-            </p>
-
-            <div className="grid grid-cols-3 gap-2">
-              <TokenStat
-                label="Input"
-                value={span.inputTokens}
-              />
-              <TokenStat
-                label="Output"
-                value={span.outputTokens}
-              />
-              <TokenStat
-                label="Total"
-                value={span.totalTokens}
-              />
-            </div>
-          </div>
+        {span.type === "llm" && (
+          <TokenStats span={span} />
         )}
 
         {span.toolInput !== undefined && (
           <JsonSection
             label="Tool Input"
             value={span.toolInput}
+          />
+        )}
+
+        {span.toolOutput !== undefined && (
+          <JsonSection
+            label="Tool Output"
+            value={span.toolOutput}
           />
         )}
 
@@ -241,7 +305,7 @@ function SpanDetails({
               Error
             </p>
 
-            <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">
+            <pre className="max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed whitespace-pre-wrap">
               {span.errorMessage}
             </pre>
           </div>
@@ -251,17 +315,33 @@ function SpanDetails({
   );
 }
 
-function DetailRow({
-  label,
-  children,
+function TokenStats({
+  span,
 }: {
-  label: string;
-  children: React.ReactNode;
+  span: TraceTreeNode["span"];
 }) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm">{children}</p>
+      <p className="mb-2 text-xs font-medium text-muted-foreground">
+        Token Usage
+      </p>
+
+      <div className="grid grid-cols-3 gap-2">
+        <TokenStat
+          label="Input"
+          value={span.inputTokens}
+        />
+
+        <TokenStat
+          label="Output"
+          value={span.outputTokens}
+        />
+
+        <TokenStat
+          label="Total"
+          value={span.totalTokens}
+        />
+      </div>
     </div>
   );
 }
@@ -274,10 +354,33 @@ function TokenStat({
   value?: number;
 }) {
   return (
-    <div className="rounded-md border p-2">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-medium">
+    <div className="rounded-md border p-2.5">
+      <p className="text-[11px] text-muted-foreground">
+        {label}
+      </p>
+
+      <p className="mt-1 text-sm font-semibold">
         {value ?? 0}
+      </p>
+    </div>
+  );
+}
+
+function InfoItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <p className="text-[11px] text-muted-foreground">
+        {label}
+      </p>
+
+      <p className="mt-1 truncate text-sm font-medium">
+        {value}
       </p>
     </div>
   );
@@ -296,7 +399,7 @@ function JsonSection({
         {label}
       </p>
 
-      <pre className="max-h-60 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">
+      <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed whitespace-pre-wrap">
         {JSON.stringify(value, null, 2)}
       </pre>
     </div>
