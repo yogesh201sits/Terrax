@@ -35,6 +35,9 @@ export interface TraceSpanResponse {
 
   reasoningTokens?: number;
 
+  attributes: Record<string, unknown>;
+
+
   errorType?: string;
   errorMessage?: string;
 

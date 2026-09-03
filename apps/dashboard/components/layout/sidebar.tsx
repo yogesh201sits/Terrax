@@ -70,12 +70,14 @@ export function AppSidebar() {
               size="lg"
               render={<Link href="/overview" />}
             >
-              <div className="flex size-8 items-center justify-center rounded-md bg-foreground text-background font-semibold">
-                T
-              </div>
+            <img
+              src="/logo.png"
+              alt="Terrax"
+              className="size-15 scale-225 object-contain brightness-0"
+            />
 
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">
+                <span className="truncate font-semibold text-2xl">
                   Terrax
                 </span>
 

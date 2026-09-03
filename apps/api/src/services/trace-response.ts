@@ -26,6 +26,8 @@ function toTraceSpanResponse(
     endTime: span.endTime,
 
     durationMs,
+
+    attributes: span.attributes,
   };
 
   if (span.framework) {
