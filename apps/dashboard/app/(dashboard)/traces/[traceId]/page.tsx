@@ -1,4 +1,5 @@
 import { getTrace } from "@/lib/api/traces";
+import { TraceTree } from "@/components/traces/trace-tree";
 
 type Props = {
   params: Promise<{
@@ -8,24 +9,24 @@ type Props = {
 
 export default async function TraceDetailPage({ params }: Props) {
   const { traceId } = await params;
-  console.log("Dashboard traceId:", traceId);
-  console.log("Dashboard traceId JSON:", JSON.stringify(traceId));
 
-  const trace = await getTrace(traceId);
+  const decodedTraceId = decodeURIComponent(traceId);
+
+  const trace = await getTrace(decodedTraceId);
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold">
-        Trace Detail
-      </h1>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold">
+          {trace.tree.roots[0]?.span.name ?? "Trace"}
+        </h1>
 
-      <p className="mt-2 text-sm text-muted-foreground">
-        {traceId}
-      </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {decodedTraceId}
+        </p>
+      </div>
 
-      <pre className="mt-6 overflow-auto rounded-lg border p-4 text-sm">
-        {JSON.stringify(trace, null, 2)}
-      </pre>
+      <TraceTree roots={trace.tree.roots} />
     </div>
   );
 }
