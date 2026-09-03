@@ -9,7 +9,7 @@ type Props = {
 
 export function TraceTree({ roots }: Props) {
   const [selectedNode, setSelectedNode] =
-    useState<TraceTreeNode | null>(null);
+  useState<TraceTreeNode | null>(null);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -204,6 +204,10 @@ function SpanDetails({
 }: {
   node: TraceTreeNode | null;
 }) {
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "input" | "output" | "details"
+  >("overview");
+
   if (!node) {
     return (
       <div className="h-fit rounded-lg border">
@@ -218,14 +222,38 @@ function SpanDetails({
 
   const { span } = node;
 
+  const tabs = [
+    {
+      id: "overview" as const,
+      label: "Overview",
+    },
+    {
+      id: "input" as const,
+      label: "Input",
+    },
+    {
+      id: "output" as const,
+      label: "Output",
+    },
+    {
+      id: "details" as const,
+      label: "Details",
+    },
+  ];
+
   return (
     <div className="h-fit rounded-lg border">
+      {/* Header */}
       <div className="border-b px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="truncate font-semibold">
-              {span.name}
-            </h2>
+            <div className="flex items-center gap-2">
+              <SpanIcon type={span.type} />
+
+              <h2 className="truncate font-semibold">
+                {span.name}
+              </h2>
+            </div>
 
             <p className="mt-1 text-xs text-muted-foreground">
               {span.type}
@@ -240,77 +268,258 @@ function SpanDetails({
         </div>
       </div>
 
-      <div className="space-y-5 p-5">
-        <div className="grid grid-cols-2 gap-3">
-          <InfoItem
-            label="Duration"
-            value={formatDuration(span.durationMs)}
-          />
+      {/* Tabs */}
+      <div className="border-b px-3">
+        <div className="flex">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`relative px-3 py-3 text-xs font-medium transition-colors ${
+                activeTab === tab.id
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
 
-          <InfoItem
-            label="Framework"
-            value={span.framework ?? "—"}
-          />
-
-          {span.provider && (
-            <InfoItem
-              label="Provider"
-              value={span.provider}
-            />
-          )}
-
-          {span.model && (
-            <InfoItem
-              label="Model"
-              value={span.model}
-            />
-          )}
+              {activeTab === tab.id && (
+                <span className="absolute inset-x-2 bottom-0 h-0.5 bg-foreground" />
+              )}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {span.type === "llm" && (
-          <TokenStats span={span} />
+      {/* Content */}
+      <div className="p-5">
+        {activeTab === "overview" && (
+          <OverviewTab span={span} />
         )}
 
-        {span.toolInput !== undefined && (
-          <JsonSection
-            label="Tool Input"
-            value={span.toolInput}
-          />
+        {activeTab === "input" && (
+          <InputTab span={span} />
         )}
 
-        {span.toolOutput !== undefined && (
-          <JsonSection
-            label="Tool Output"
-            value={span.toolOutput}
-          />
+        {activeTab === "output" && (
+          <OutputTab span={span} />
         )}
 
-        {span.prompt !== undefined && (
-          <JsonSection
-            label="Prompt"
-            value={span.prompt}
-          />
-        )}
-
-        {span.completion !== undefined && (
-          <JsonSection
-            label="Completion"
-            value={span.completion}
-          />
-        )}
-
-        {span.errorMessage && (
-          <div>
-            <p className="mb-2 text-xs font-medium text-destructive">
-              Error
-            </p>
-
-            <pre className="max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed whitespace-pre-wrap">
-              {span.errorMessage}
-            </pre>
-          </div>
+        {activeTab === "details" && (
+          <DetailsTab span={span} />
         )}
       </div>
+    </div>
+  );
+}
+
+function OverviewTab({
+  span,
+}: {
+  span: TraceTreeNode["span"];
+}) {
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-4">
+        <InfoItem
+          label="Duration"
+          value={formatDuration(span.durationMs)}
+        />
+
+        <InfoItem
+          label="Status"
+          value={span.errorMessage ? "ERROR" : "OK"}
+        />
+
+        {span.framework && (
+          <InfoItem
+            label="Framework"
+            value={span.framework}
+          />
+        )}
+
+        {span.provider && (
+          <InfoItem
+            label="Provider"
+            value={span.provider}
+          />
+        )}
+
+        {span.model && (
+          <InfoItem
+            label="Model"
+            value={span.model}
+          />
+        )}
+      </div>
+
+      {span.type === "llm" && (
+        <TokenStats span={span} />
+      )}
+
+      {span.toolCalls &&
+        span.toolCalls.length > 0 && (
+          <JsonSection
+            label="Tool Calls"
+            value={span.toolCalls}
+          />
+        )}
+
+      {span.errorMessage && (
+        <ErrorSection
+          message={span.errorMessage}
+        />
+      )}
+    </div>
+  );
+}
+
+function InputTab({
+  span,
+}: {
+  span: TraceTreeNode["span"];
+}) {
+  if (
+    span.prompt === undefined &&
+    span.toolInput === undefined
+  ) {
+    return <EmptyState label="No input recorded." />;
+  }
+
+  return (
+    <div className="space-y-5">
+      {span.prompt !== undefined && (
+        <JsonSection
+          label="Prompt"
+          value={span.prompt}
+        />
+      )}
+
+      {span.toolInput !== undefined && (
+        <JsonSection
+          label="Tool Input"
+          value={span.toolInput}
+        />
+      )}
+    </div>
+  );
+}
+
+function OutputTab({
+  span,
+}: {
+  span: TraceTreeNode["span"];
+}) {
+  if (
+    span.completion === undefined &&
+    span.toolOutput === undefined
+  ) {
+    return <EmptyState label="No output recorded." />;
+  }
+
+  return (
+    <div className="space-y-5">
+      {span.completion !== undefined && (
+        <JsonSection
+          label="Completion"
+          value={span.completion}
+        />
+      )}
+
+      {span.toolOutput !== undefined && (
+        <JsonSection
+          label="Tool Output"
+          value={span.toolOutput}
+        />
+      )}
+    </div>
+  );
+}
+
+function DetailsTab({
+  span,
+}: {
+  span: TraceTreeNode["span"];
+}) {
+  const attributes =
+    span.attributes &&
+    typeof span.attributes === "object"
+      ? span.attributes
+      : {};
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">
+          Span ID
+        </p>
+
+        <p className="break-all rounded-md bg-muted p-3 font-mono text-xs">
+          {span.spanId}
+        </p>
+      </div>
+
+      {span.parentSpanId && (
+        <div>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">
+            Parent Span ID
+          </p>
+
+          <p className="break-all rounded-md bg-muted p-3 font-mono text-xs">
+            {span.parentSpanId}
+          </p>
+        </div>
+      )}
+
+      <div>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">
+          Trace ID
+        </p>
+
+        <p className="break-all rounded-md bg-muted p-3 font-mono text-xs">
+          {span.traceId}
+        </p>
+      </div>
+
+      {Object.keys(attributes).length > 0 && (
+        <JsonSection
+          label="Attributes"
+          value={attributes}
+        />
+      )}
+    </div>
+  );
+}
+
+function ErrorSection({
+  message,
+}: {
+  message: string;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium text-destructive">
+        Error
+      </p>
+
+      <pre className="max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed whitespace-pre-wrap">
+        {message}
+      </pre>
+    </div>
+  );
+}
+
+function EmptyState({
+  label,
+}: {
+  label: string;
+}) {
+  return (
+    <div className="rounded-md border border-dashed p-8 text-center">
+      <p className="text-xs text-muted-foreground">
+        {label}
+      </p>
     </div>
   );
 }
@@ -393,15 +602,150 @@ function JsonSection({
   label: string;
   value: unknown;
 }) {
-  return (
-    <div>
-      <p className="mb-2 text-xs font-medium text-muted-foreground">
-        {label}
-      </p>
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
-      <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed whitespace-pre-wrap">
-        {JSON.stringify(value, null, 2)}
-      </pre>
+  const entries =
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+      ? Object.entries(value as Record<string, unknown>)
+      : [];
+
+  const filteredEntries = entries.filter(([key]) =>
+    key.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const visibleEntries = showAll
+    ? filteredEntries
+    : filteredEntries.slice(0, 6);
+
+  return (
+    <div className="rounded-md border">
+      {/* Header */}
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-3 py-2.5 text-left hover:bg-muted/40"
+      >
+        <div>
+          <p className="text-xs font-medium">
+            {label}
+          </p>
+
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
+            {entries.length}{" "}
+            {entries.length === 1 ? "field" : "fields"}
+          </p>
+        </div>
+
+        <span className="text-xs text-muted-foreground">
+          {open ? "−" : "+"}
+        </span>
+      </button>
+
+      {/* Content */}
+      {open && (
+        <div className="border-t p-3">
+          {entries.length === 0 ? (
+            <pre className="overflow-auto rounded-md bg-muted p-3 text-xs">
+              {JSON.stringify(value, null, 2)}
+            </pre>
+          ) : (
+            <>
+              <input
+                type="text"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setShowAll(true);
+                }}
+                placeholder="Search attributes..."
+                className="mb-2 w-full rounded-md border bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+              />
+
+              <div className="overflow-hidden rounded-md border">
+                {visibleEntries.map(
+                  ([key, attributeValue]) => (
+                    <AttributeRow
+                      key={key}
+                      name={key}
+                      value={attributeValue}
+                    />
+                  ),
+                )}
+              </div>
+
+              {filteredEntries.length > 6 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAll(!showAll)}
+                  className="mt-2 w-full rounded-md border px-3 py-2 text-xs font-medium hover:bg-muted"
+                >
+                  {showAll
+                    ? "Show less"
+                    : `Show ${
+                        filteredEntries.length - 6
+                      } more`}
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AttributeRow({
+  name,
+  value,
+}: {
+  name: string;
+  value: unknown;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const isObject =
+    value !== null &&
+    typeof value === "object";
+
+  const displayValue = isObject
+    ? JSON.stringify(value)
+    : String(value);
+
+  return (
+    <div className="px-3 py-2.5">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="break-all font-mono text-[11px] text-muted-foreground">
+            {name}
+          </p>
+
+          {!expanded && (
+            <p className="mt-1 truncate text-xs">
+              {displayValue}
+            </p>
+          )}
+
+          {expanded && (
+            <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-[11px] whitespace-pre-wrap">
+              {JSON.stringify(value, null, 2)}
+            </pre>
+          )}
+        </div>
+
+        {isObject && (
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="shrink-0 rounded-md border px-2 py-1 text-[10px] hover:bg-muted"
+          >
+            {expanded ? "Collapse" : "Expand"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
