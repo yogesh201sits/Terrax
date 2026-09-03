@@ -1,13 +1,27 @@
 import { Hono } from "hono";
 import { decodeTraces, normalizeTraces } from "@terrax/otel";
 import { ingestTraces } from "../services/trace-ingestion";
-import { getTrace } from "../services/trace-query";
+import { getTrace,listTraces } from "../services/trace-query";
 import { authMiddleware } from "../middleware/auth";
 import type { AppVariables } from "../types";
 
 const traces = new Hono<{
   Variables: AppVariables;
 }>();
+
+traces.get(
+  "/traces",
+  authMiddleware,
+  async (c) => {
+    const projectId = c.get("projectId");
+
+    const traces = await listTraces(projectId);
+
+    return c.json({
+      traces,
+    });
+  },
+);
 
 // traces.post(
 //   "/traces",
