@@ -319,8 +319,11 @@ function OverviewTab({
 }: {
   span: TraceTreeNode["span"];
 }) {
+  const isLLM = span.type === "llm";
+
   return (
     <div className="space-y-5">
+      {/* Execution Info */}
       <div className="grid grid-cols-2 gap-4">
         <InfoItem
           label="Duration"
@@ -347,17 +350,21 @@ function OverviewTab({
         )}
 
         {span.model && (
-          <InfoItem
-            label="Model"
-            value={span.model}
-          />
+          <div className="col-span-2">
+            <InfoItem
+              label="Model"
+              value={span.model}
+            />
+          </div>
         )}
       </div>
 
-      {span.type === "llm" && (
+      {/* LLM Token Usage */}
+      {isLLM && (
         <TokenStats span={span} />
       )}
 
+      {/* Tool Calls */}
       {span.toolCalls &&
         span.toolCalls.length > 0 && (
           <JsonSection
@@ -366,8 +373,28 @@ function OverviewTab({
           />
         )}
 
+      {span.type === "tool" && (
+        <div className="space-y-4">
+          {span.toolInput !== undefined && (
+            <JsonSection
+              label="Tool Input"
+              value={span.toolInput}
+            />
+          )}
+
+          {span.toolOutput !== undefined && (
+            <JsonSection
+              label="Tool Output"
+              value={span.toolOutput}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Error */}
       {span.errorMessage && (
         <ErrorSection
+          type={span.errorType}
           message={span.errorMessage}
         />
       )}
@@ -493,17 +520,27 @@ function DetailsTab({
 }
 
 function ErrorSection({
+  type,
   message,
 }: {
+  type?: string;
   message: string;
 }) {
   return (
-    <div>
-      <p className="mb-2 text-xs font-medium text-destructive">
-        Error
-      </p>
+    <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="text-xs font-semibold text-destructive">
+          Error
+        </span>
 
-      <pre className="max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed whitespace-pre-wrap">
+        {type && (
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {type}
+          </span>
+        )}
+      </div>
+
+      <pre className="max-h-96 overflow-auto rounded-md bg-background p-3 text-xs leading-relaxed whitespace-pre-wrap">
         {message}
       </pre>
     </div>
@@ -529,13 +566,22 @@ function TokenStats({
 }: {
   span: TraceTreeNode["span"];
 }) {
+  const hasReasoning =
+    span.reasoningTokens !== undefined;
+
   return (
     <div>
       <p className="mb-2 text-xs font-medium text-muted-foreground">
         Token Usage
       </p>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div
+        className={`grid gap-2 ${
+          hasReasoning
+            ? "grid-cols-2 sm:grid-cols-4"
+            : "grid-cols-3"
+        }`}
+      >
         <TokenStat
           label="Input"
           value={span.inputTokens}
@@ -550,6 +596,13 @@ function TokenStats({
           label="Total"
           value={span.totalTokens}
         />
+
+        {hasReasoning && (
+          <TokenStat
+            label="Reasoning"
+            value={span.reasoningTokens}
+          />
+        )}
       </div>
     </div>
   );

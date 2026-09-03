@@ -5,6 +5,8 @@ import { TraceTree } from "@/components/traces/trace-tree";
 import { TraceSummary } from "@/components/traces/trace-summary";
 import { TraceTimelineToggle } from "@/components/traces/trace-timeline-toggle";
 import { CopyTraceId } from "@/components/traces/copy-trace-id";
+import { TraceGraph } from "@/components/traces/trace-graph";
+import { TraceGraphToggle } from "@/components/traces/trace-graph-toggle";
 
 import type { TraceDetail } from "@/types/trace-detail";
 
@@ -125,6 +127,24 @@ export default async function TraceDetailPage({
 
       {/* Timeline */}
       <TraceTimelineToggle roots={trace.tree.roots} />
+
+      <TraceGraphToggle roots={trace.tree.roots} />
+
+      {/* Graph */}
+      {/* <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">
+            Graph Explorer
+          </h2>
+
+          <p className="text-sm text-muted-foreground">
+            Visualize the execution hierarchy of this trace.
+          </p>
+        </div>
+
+        <TraceGraph roots={trace.tree.roots} />
+      </div> */}
+
     </div>
   );
 }
