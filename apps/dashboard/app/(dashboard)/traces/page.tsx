@@ -1,6 +1,5 @@
 import { getTraces } from "@/lib/api/traces";
 import { TraceTable } from "@/components/traces/trace-table";
-import { TraceActivityChart } from "@/components/dashboard/trace-activity-chart";
 
 export default async function TracesPage() {
   const { traces } = await getTraces();
