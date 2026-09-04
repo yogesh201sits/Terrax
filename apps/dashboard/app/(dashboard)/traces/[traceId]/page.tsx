@@ -71,12 +71,8 @@ export default async function TraceDetailPage({
             </div>
 
             {/* Trace ID */}
-            <div className="mt-2 flex max-w-full items-center gap-2">
-              <p className="min-w-0 break-all font-mono text-xs text-muted-foreground">
-                {decodedTraceId}
-              </p>
-
-              <CopyTraceId traceId={decodedTraceId} />
+            <div className="mt-2 flex max-w-full items-center">
+                <CopyTraceId traceId={decodedTraceId} />
             </div>
           </div>
         </div>

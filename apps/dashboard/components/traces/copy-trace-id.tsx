@@ -23,9 +23,10 @@ export function CopyTraceId({ traceId }: Props) {
     <button
       type="button"
       onClick={handleCopy}
-      className="rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-muted"
+      title={copied ? "Copied!" : "Click to copy trace ID"}
+      className="min-w-0 max-w-full break-all text-left font-mono text-xs text-muted-foreground hover:text-foreground hover:underline"
     >
-      {copied ? "Copied" : "Copy"}
+      {traceId}
     </button>
   );
 }

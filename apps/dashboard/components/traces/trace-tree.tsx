@@ -161,7 +161,7 @@ function TraceTreeNodeView({
 
             {/* Model */}
             {span.model && (
-              <span className="hidden max-w-[180px] truncate text-xs text-muted-foreground lg:inline">
+              <span className="hidden max-w-45 truncate text-xs text-muted-foreground lg:inline">
                 {span.model}
               </span>
             )}
