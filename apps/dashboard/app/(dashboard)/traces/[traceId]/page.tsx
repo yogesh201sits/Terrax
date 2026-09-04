@@ -82,20 +82,25 @@ export default async function TraceDetailPage({
         </div>
 
         {/* Metadata */}
-        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
           {startTime !== null && (
             <span>
               Started {formatDateTime(startTime)}
             </span>
           )}
 
-          <span>
+          {startTime !== null && (
+            <span className="text-border">•</span>
+          )}
+
+          <span className="tabular-nums">
             Duration {formatDuration(durationMs)}
           </span>
 
-          <span>
-            {spans.length}{" "}
-            {spans.length === 1 ? "span" : "spans"}
+          <span className="text-border">•</span>
+
+          <span className="tabular-nums">
+            {spans.length} {spans.length === 1 ? "span" : "spans"}
           </span>
         </div>
 

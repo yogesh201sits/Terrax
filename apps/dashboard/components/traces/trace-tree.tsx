@@ -2,6 +2,18 @@
 
 import { useState } from "react";
 import type { TraceTreeNode } from "@/types/trace-detail";
+import {
+  Workflow,
+  GitBranch,
+  Sparkles,
+  Wrench,
+  Activity,
+} from "lucide-react";
+
+import {
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 
 type Props = {
   roots: TraceTreeNode[];
@@ -58,17 +70,20 @@ function TraceTreeNodeView({
   const [expanded, setExpanded] = useState(true);
 
   const { span } = node;
+
   const hasChildren = node.children.length > 0;
   const isError = Boolean(span.errorMessage);
   const isSelected = selectedSpanId === span.spanId;
 
   return (
     <div className="relative">
+      {/* Vertical tree connector */}
       {depth > 0 && (
         <div
-          className={`absolute left-3 top-0 w-px bg-border ${
-            isLast ? "h-5" : "bottom-0"
-          }`}
+          className="absolute left-3 top-0 w-px bg-border"
+          style={{
+            height: isLast ? "20px" : "100%",
+          }}
         />
       )}
 
@@ -78,32 +93,43 @@ function TraceTreeNodeView({
           paddingLeft: `${depth * 28}px`,
         }}
       >
+        {/* Horizontal tree connector */}
         {depth > 0 && (
-          <div className="absolute left-3 top-1/2 w-4 border-t border-border" />
+          <div className="absolute left-3 top-1/2 h-px w-4 bg-border" />
         )}
 
         <div
-          className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 transition-colors ${
+          className={[
+            "group flex min-w-0 flex-1 items-center gap-2 rounded-md",
+            "px-2 py-1.5 transition-colors",
             isSelected
-              ? "bg-muted"
-              : "hover:bg-muted/50"
-          }`}
+              ? "bg-muted ring-1 ring-border"
+              : "hover:bg-muted/50",
+          ].join(" ")}
         >
+          {/* Expand / collapse */}
           {hasChildren ? (
             <button
               type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="flex size-5 shrink-0 items-center justify-center rounded text-xs text-muted-foreground hover:bg-background"
+              onClick={() => setExpanded((value) => !value)}
+              className="flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
               aria-label={
-                expanded ? "Collapse span" : "Expand span"
+                expanded
+                  ? `Collapse ${span.name}`
+                  : `Expand ${span.name}`
               }
             >
-              {expanded ? "⌄" : "›"}
+              {expanded ? (
+                <ChevronDown className="size-3.5" />
+              ) : (
+                <ChevronRight className="size-3.5" />
+              )}
             </button>
           ) : (
             <span className="size-5 shrink-0" />
           )}
 
+          {/* Span content */}
           <button
             type="button"
             onClick={() => onSelect(node)}
@@ -111,44 +137,59 @@ function TraceTreeNodeView({
           >
             <SpanIcon type={span.type} />
 
-            <span className="truncate text-sm font-medium">
+            {/* Span name */}
+            <span
+              className={[
+                "min-w-0 truncate text-sm",
+                isSelected
+                  ? "font-semibold text-foreground"
+                  : "font-medium",
+              ].join(" ")}
+            >
               {span.name}
             </span>
 
+            {/* Span type */}
             <SpanType type={span.type} />
 
+            {/* Provider */}
             {span.provider && (
-              <span className="hidden text-xs text-muted-foreground md:inline">
+              <span className="hidden shrink-0 text-xs text-muted-foreground md:inline">
                 {span.provider}
               </span>
             )}
 
+            {/* Model */}
             {span.model && (
               <span className="hidden max-w-[180px] truncate text-xs text-muted-foreground lg:inline">
                 {span.model}
               </span>
             )}
 
+            {/* Token usage */}
             {span.type === "llm" &&
               span.totalTokens !== undefined && (
-                <span className="hidden text-xs text-muted-foreground xl:inline">
-                  {span.totalTokens} tokens
+                <span className="hidden shrink-0 text-xs tabular-nums text-muted-foreground xl:inline">
+                  {span.totalTokens.toLocaleString()} tokens
                 </span>
               )}
           </button>
 
-          <span className="shrink-0 text-xs text-muted-foreground">
+          {/* Duration */}
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
             {formatDuration(span.durationMs)}
           </span>
 
+          {/* Error */}
           {isError && (
-            <span className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium text-destructive">
-              ERROR
+            <span className="shrink-0 rounded-full border border-destructive/30 bg-destructive/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-destructive">
+              Error
             </span>
           )}
         </div>
       </div>
 
+      {/* Children */}
       {expanded && hasChildren && (
         <div>
           {node.children.map((child, index) => (
@@ -173,16 +214,21 @@ function SpanIcon({
   type: TraceTreeNode["span"]["type"];
 }) {
   const icons = {
-    workflow: "W",
-    workflow_node: "N",
-    llm: "L",
-    tool: "T",
-    generic: "S",
+    workflow: Workflow,
+    workflow_node: GitBranch,
+    llm: Sparkles,
+    tool: Wrench,
+    generic: Activity,
   };
 
+  const Icon = icons[type];
+
   return (
-    <span className="flex size-6 shrink-0 items-center justify-center rounded border text-[10px] font-semibold">
-      {icons[type]}
+    <span className="flex size-6 shrink-0 items-center justify-center ">
+      <Icon
+        className="size-3.5 text-muted-foreground"
+        strokeWidth={1.8}
+      />
     </span>
   );
 }

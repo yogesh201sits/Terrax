@@ -1,16 +1,33 @@
 import type { TraceTreeNode } from "@/types/trace-detail";
 
+import {
+  Activity,
+  Bot,
+  CheckCircle2,
+  Clock3,
+  Coins,
+  Wrench,
+  XCircle,
+} from "lucide-react";
+
+import type { LucideIcon } from "lucide-react";
+
+
 type Props = {
   roots: TraceTreeNode[];
 };
+
+
 
 export function TraceSummary({ roots }: Props) {
   const spans = flattenTree(roots);
 
   const durationMs = getTraceDuration(roots);
+
   const llmCalls = spans.filter(
     (node) => node.span.type === "llm",
   ).length;
+
   const toolCalls = spans.filter(
     (node) => node.span.type === "tool",
   ).length;
@@ -24,23 +41,54 @@ export function TraceSummary({ roots }: Props) {
   );
 
   return (
-    <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-      <Stat label="Duration" value={formatDuration(durationMs)} />
-      <Stat label="Spans" value={String(spans.length)} />
-      <Stat label="LLM Calls" value={String(llmCalls)} />
-      <Stat label="Tool Calls" value={String(toolCalls)} />
-      <Stat label="Tokens" value={String(totalTokens)} />
+    <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+      <Stat
+        icon={Clock3}
+        label="Duration"
+        value={formatDuration(durationMs)}
+      />
 
-      <div className="col-span-2 rounded-lg border p-4 md:col-span-5">
-        <div className="flex items-center gap-2">
-          <span
-            className={`size-2 rounded-full ${
-              hasError ? "bg-destructive" : "bg-foreground"
-            }`}
-          />
+      <Stat
+        icon={Activity}
+        label="Spans"
+        value={spans.length.toLocaleString()}
+      />
 
-          <span className="text-sm font-medium">
-            {hasError ? "ERROR" : "OK"}
+      <Stat
+        icon={Bot}
+        label="LLM Calls"
+        value={llmCalls.toLocaleString()}
+      />
+
+      <Stat
+        icon={Wrench}
+        label="Tool Calls"
+        value={toolCalls.toLocaleString()}
+      />
+
+      <Stat
+        icon={Coins}
+        label="Tokens"
+        value={totalTokens.toLocaleString()}
+      />
+
+      {/* Trace status */}
+      <div className="col-span-2 rounded-lg border p-4 md:col-span-3 lg:col-span-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {hasError ? (
+              <XCircle className="size-4 text-destructive" />
+            ) : (
+              <CheckCircle2 className="size-4" />
+            )}
+
+            <span className="text-sm font-medium">
+              {hasError ? "Trace failed" : "Trace completed successfully"}
+            </span>
+          </div>
+
+          <span className="text-xs text-muted-foreground">
+            {spans.length} {spans.length === 1 ? "span" : "spans"}
           </span>
         </div>
       </div>
@@ -48,22 +96,31 @@ export function TraceSummary({ roots }: Props) {
   );
 }
 
+
+type StatProps = {
+  icon: LucideIcon;
+  label: string;
+  value: string | number;
+};
+
 function Stat({
+  icon: Icon,
   label,
   value,
-}: {
-  label: string;
-  value: string;
-}) {
+}: StatProps) {
   return (
-    <div className="rounded-lg border p-4">
-      <p className="text-xs text-muted-foreground">
-        {label}
-      </p>
+    <div className="rounded-lg border bg-background p-4">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="size-3.5" strokeWidth={1.8} />
 
-      <p className="mt-1 text-lg font-semibold">
+        <span className="text-xs font-medium">
+          {label}
+        </span>
+      </div>
+
+      <div className="mt-2 text-lg font-semibold tracking-tight">
         {value}
-      </p>
+      </div>
     </div>
   );
 }
