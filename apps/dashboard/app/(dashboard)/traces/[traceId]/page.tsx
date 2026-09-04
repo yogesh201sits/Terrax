@@ -7,6 +7,7 @@ import { TraceTimelineToggle } from "@/components/traces/trace-timeline-toggle";
 import { CopyTraceId } from "@/components/traces/copy-trace-id";
 import { TraceGraph } from "@/components/traces/trace-graph";
 import { TraceGraphToggle } from "@/components/traces/trace-graph-toggle";
+import { TraceActivityChart } from "@/components/dashboard/trace-activity-chart";
 
 import type { TraceDetail } from "@/types/trace-detail";
 
@@ -145,6 +146,7 @@ export default async function TraceDetailPage({
 
         <TraceGraph roots={trace.tree.roots} />
       </div> */}
+
 
     </div>
   );
