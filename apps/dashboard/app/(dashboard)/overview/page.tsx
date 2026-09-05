@@ -111,140 +111,212 @@ export default async function OverviewPage() {
 
   const recentTraces = traces.slice(0, 5);
 
-  return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Overview
-        </h1>
+return (
+  <div className="min-h-full bg-[#f2f2f2] p-6">
+    {/* Header */}
+    <div className="mb-6">
+      <h1
+        className="
+          text-2xl
+          font-semibold
+          tracking-tight
+          text-[#333333]
+          [text-shadow:1px_1px_1px_#d0d0d0,-1px_-1px_1px_#ffffff]
+        "
+      >
+        Overview
+      </h1>
 
-        <p className="mt-1 text-sm text-muted-foreground">
-          Monitor your AI agent executions and system activity.
-        </p>
+      <p
+        className="
+          mt-1
+          text-sm
+          text-[#777777]
+          [text-shadow:1px_1px_1px_#d5d5d5,-1px_-1px_1px_#ffffff]
+        "
+      >
+        Monitor your AI agent executions and system activity.
+      </p>
+    </div>
+
+    <div className="space-y-6">
+      {/* Metrics */}
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Total Traces"
+          value={metrics.totalTraces.toLocaleString()}
+          description="Recorded executions"
+        />
+
+        <MetricCard
+          title="Error Rate"
+          value={`${metrics.errorRate.toFixed(1)}%`}
+          description={`${metrics.errorTraces} failed traces`}
+        />
+
+        <MetricCard
+          title="Avg. Duration"
+          value={formatDuration(metrics.averageDuration)}
+          description="Across all traces"
+        />
+
+        <MetricCard
+          title="Total Tokens"
+          value={metrics.totalTokens.toLocaleString()}
+          description="Input + output tokens"
+        />
       </div>
 
-      <div className="space-y-6">
-        {/* Metrics */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            title="Total Traces"
-            value={metrics.totalTraces.toLocaleString()}
-            description="Recorded executions"
-          />
-
-          {/* Error Rate */}
-          
-          <MetricCard
-            title="Error Rate"
-            value={`${metrics.errorRate.toFixed(1)}%`}
-            description={`${metrics.errorTraces} failed traces`}
-          />
-         
-
-          <MetricCard
-            title="Avg. Duration"
-            value={formatDuration(
-              metrics.averageDuration,
-            )}
-            description="Across all traces"
-          />
-
-          <MetricCard
-            title="Total Tokens"
-            value={metrics.totalTokens.toLocaleString()}
-            description="Input + output tokens"
-          />
-        </div>
-
-        {/* Trace Activity */}
+      {/* Trace Activity */}
+      <div
+        className="
+          rounded-2xl
+          bg-[#f2f2f2]
+          p-1
+          shadow-[6px_6px_12px_#d2d2d2,-6px_-6px_12px_#ffffff]
+        "
+      >
         <TraceActivityChart traces={traces} />
+      </div>
 
-        {/* Recent Traces */}
-        <section className="rounded-xl border">
-          <div className="flex items-center justify-between border-b px-5 py-4">
-            <div>
-              <h2 className="font-semibold">
-                Recent Traces
-              </h2>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Latest AI agent executions
-              </p>
-            </div>
-
-            <Link
-              href="/traces"
-              className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+      {/* Recent Traces */}
+      <section
+        className="
+          overflow-hidden
+          rounded-2xl
+          bg-[#f2f2f2]
+          shadow-[6px_6px_12px_#d2d2d2,-6px_-6px_12px_#ffffff]
+        "
+      >
+        <div
+          className="
+            flex
+            items-center
+            justify-between
+            border-b
+            border-[#dddddd]
+            px-5
+            py-4
+          "
+        >
+          <div>
+            <h2
+              className="
+                font-semibold
+                text-[#333333]
+                [text-shadow:1px_1px_1px_#d0d0d0,-1px_-1px_1px_#ffffff]
+              "
             >
-              View all →
-            </Link>
+              Recent Traces
+            </h2>
+
+            <p
+              className="
+                mt-1
+                text-xs
+                text-[#777777]
+                [text-shadow:1px_1px_1px_#d5d5d5,-1px_-1px_1px_#ffffff]
+              "
+            >
+              Latest AI agent executions
+            </p>
           </div>
 
-          {recentTraces.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              No traces available.
-            </div>
-          ) : (
-            <div className="divide-y">
-              {recentTraces.map((trace) => {
-                const hasError =
-                  trace.status.toLowerCase() ===
-                    "error" ||
-                  trace.status.toLowerCase() ===
-                    "failed";
+          <Link
+            href="/traces"
+            className="
+              rounded-lg
+              px-3
+              py-2
+              text-xs
+              font-medium
+              text-[#666666]
+              transition-all
+              hover:text-[#333333]
+              hover:shadow-[3px_3px_6px_#d2d2d2,-3px_-3px_6px_#ffffff]
+              active:shadow-[inset_2px_2px_4px_#d2d2d2,inset_-2px_-2px_4px_#ffffff]
+            "
+          >
+            View all →
+          </Link>
+        </div>
 
-                return (
-                  <Link
-                    key={trace.traceId}
-                    href={`/traces/${encodeURIComponent(
-                      trace.traceId,
-                    )}`}
-                    className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/40"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {trace.name}
-                      </p>
+        {recentTraces.length === 0 ? (
+          <div className="p-8 text-center text-sm text-[#777777]">
+            No traces available.
+          </div>
+        ) : (
+          <div className="divide-y divide-[#dddddd]">
+            {recentTraces.map((trace) => {
+              const hasError =
+                trace.status.toLowerCase() === "error" ||
+                trace.status.toLowerCase() === "failed";
 
-                      <p className="mt-1 truncate text-xs text-muted-foreground">
-                        {trace.traceId}
-                      </p>
-                    </div>
+              return (
+                <Link
+                  key={trace.traceId}
+                  href={`/traces/${encodeURIComponent(
+                    trace.traceId,
+                  )}`}
+                  className="
+                    flex
+                    items-center
+                    justify-between
+                    gap-4
+                    px-5
+                    py-4
+                    transition-all
+                    hover:bg-[#eeeeee]
+                    hover:[box-shadow:inset_2px_2px_5px_#d8d8d8,inset_-2px_-2px_5px_#ffffff]
+                  "
+                >
+                  <div className="min-w-0">
+                    <p
+                      className="
+                        truncate
+                        text-sm
+                        font-medium
+                        text-[#333333]
+                        [text-shadow:1px_1px_1px_#d0d0d0]
+                      "
+                    >
+                      {trace.name}
+                    </p>
 
-                    <div className="flex shrink-0 items-center gap-5 text-xs">
-                      <span
-                        className={
-                          hasError
-                            ? "font-medium text-destructive"
-                            : "font-medium text-muted-foreground"
-                        }
-                      >
-                        {hasError
-                          ? "ERROR"
-                          : "OK"}
-                      </span>
+                    <p className="mt-1 truncate text-xs text-[#888888]">
+                      {trace.traceId}
+                    </p>
+                  </div>
 
-                      <span className="tabular-nums text-muted-foreground">
-                        {formatDuration(
-                          trace.durationMs,
-                        )}
-                      </span>
+                  <div className="flex shrink-0 items-center gap-5 text-xs">
+                    <span
+                      className={
+                        hasError
+                          ? "font-medium text-red-500 [text-shadow:1px_1px_1px_#cccccc]"
+                          : "font-medium text-[#666666] [text-shadow:1px_1px_1px_#d0d0d0]"
+                      }
+                    >
+                      {hasError ? "ERROR" : "OK"}
+                    </span>
 
-                      <span className="hidden tabular-nums text-muted-foreground sm:inline">
-                        {trace.totalTokens.toLocaleString()}{" "}
-                        tokens
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
+                    <span className="tabular-nums text-[#777777]">
+                      {formatDuration(trace.durationMs)}
+                    </span>
+
+                    <span className="hidden tabular-nums text-[#777777] sm:inline">
+                      {trace.totalTokens.toLocaleString()} tokens
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
-  );
+  </div>
+);
+
 }
 
 function MetricCard({

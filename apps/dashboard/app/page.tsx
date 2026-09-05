@@ -55,13 +55,21 @@ export default function Home() {
       {/* Hero */}
       <section className="border-b border-[#d5d5d5]">
         <div className="mx-auto flex min-h-[650px] max-w-6xl flex-col items-center justify-center px-6 py-24 text-center">
-          <div className="mb-10 flex size-24 items-center justify-center rounded-[28px] bg-[#e8e8e8] shadow-[10px_10px_20px_#c5c5c5,-10px_-10px_20px_#ffffff]">
+         <div className="mb-10 flex size-24 items-center justify-center">
             <img
               src="/logo.png"
               alt="Terrax"
-              className="size-35 scale-200 object-contain brightness-0"
+              className="
+                size-45
+                scale-450
+                object-contain
+                brightness-0
+                drop-shadow-[3px_3px_2px_#c4c4c4]
+                drop-shadow-[-2px_-2px_2px_#ffffff]
+              "
             />
           </div>
+          
 
           <p className="mb-5 text-sm font-semibold tracking-wide text-[#777]">
             OpenTelemetry-powered observability
@@ -172,12 +180,72 @@ export default function Home() {
                 without replacing the telemetry ecosystem you already use.
               </p>
 
+            <div className="mt-9 inline-flex rounded-2xl bg-[#e8e8e8] p-1.5 shadow-[8px_8px_18px_#c5c5c5,-8px_-8px_18px_#ffffff] transition-all duration-300 hover:shadow-[10px_10px_22px_#c2c2c2,-10px_-10px_22px_#ffffff]">
               <Link
                 href="/overview"
-                className="mt-9 inline-flex rounded-xl bg-[#e8e8e8] px-6 py-3 text-sm font-semibold shadow-[6px_6px_12px_#c7c7c7,-6px_-6px_12px_#ffffff] transition-all hover:-translate-y-0.5 active:translate-y-0 active:shadow-[inset_3px_3px_6px_#c5c5c5,inset_-3px_-3px_6px_#ffffff]"
+                className="
+                  group
+                  relative
+                  inline-flex
+                  items-center
+                  gap-2
+                  overflow-hidden
+                  rounded-xl
+                  bg-[#e8e8e8]
+                  px-6
+                  py-3
+                  text-sm
+                  font-semibold
+                  text-zinc-800
+                  shadow-[inset_2px_2px_5px_#c6c6c6,inset_-2px_-2px_5px_#ffffff]
+                  transition-all
+                  duration-300
+
+                  hover:-translate-y-0.5
+                  hover:shadow-[6px_6px_12px_#c5c5c5,-6px_-6px_12px_#ffffff]
+
+                  active:translate-y-0
+                  active:shadow-[inset_4px_4px_8px_#c3c3c3,inset_-4px_-4px_8px_#ffffff]
+                "
               >
-                View your telemetry
+                <span className="relative z-10">
+                  View your telemetry
+                </span>
+
+                <span
+                  className="
+                    relative
+                    z-10
+                    flex
+                    h-6
+                    w-6
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-[#e8e8e8]
+                    text-zinc-600
+                    shadow-[2px_2px_5px_#c5c5c5,-2px_-2px_5px_#ffffff]
+                    transition-all
+                    duration-300
+                    group-hover:translate-x-0.5
+                    group-hover:text-zinc-900
+                  "
+                >
+                  →
+                </span>
+
+                <span
+                  className="
+                    absolute
+                    inset-x-6
+                    top-0
+                    h-px
+                    bg-white/80
+                  "
+                />
               </Link>
+            </div>
+              
             </div>
 
             {/* Telemetry Visual */}
