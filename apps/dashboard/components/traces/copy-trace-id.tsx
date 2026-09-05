@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "@/components/ui/toast";
 
 type Props = {
   traceId: string;
@@ -13,6 +14,11 @@ export function CopyTraceId({ traceId }: Props) {
     await navigator.clipboard.writeText(traceId);
 
     setCopied(true);
+
+    toast.add({
+      title: "Trace ID copied",
+      description: "The trace ID has been copied to your clipboard.",
+    });
 
     setTimeout(() => {
       setCopied(false);

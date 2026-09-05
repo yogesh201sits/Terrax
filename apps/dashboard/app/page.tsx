@@ -53,23 +53,71 @@ export default function Home() {
       </header>
 
       {/* Hero */}
-      <section className="border-b border-[#d5d5d5]">
-        <div className="mx-auto flex min-h-[650px] max-w-6xl flex-col items-center justify-center px-6 py-24 text-center">
-         <div className="mb-10 flex size-24 items-center justify-center">
-            <img
-              src="/logo.png"
-              alt="Terrax"
-              className="
-                size-45
-                scale-450
-                object-contain
-                brightness-0
-                drop-shadow-[3px_3px_2px_#c4c4c4]
-                drop-shadow-[-2px_-2px_2px_#ffffff]
-              "
-            />
+     <section className="relative overflow-hidden border-b border-[#d5d5d5]">
+      {/* Minimal neumorphic trace shape */}
+        <div
+          className="
+            pointer-events-none absolute
+            left-1/2 top-[50%]
+            h-[220px] w-[760px]
+            -translate-x-1/2
+            rounded-[45%]
+            bg-[#e8e8e8]
+            opacity-50
+            shadow-[inset_18px_18px_35px_#d1d1d1,inset_-18px_-18px_35px_#ffffff]
+          "
+        />
+
+        <div
+          className="
+            pointer-events-none absolute
+            left-1/2 top-[45%]
+            h-[90px] w-[430px]
+            -translate-x-[10%]
+            rotate-[-18deg]
+            rounded-[50%]
+            bg-[#e8e8e8]
+            opacity-35
+            shadow-[inset_10px_10px_22px_#d1d1d1,inset_-10px_-10px_22px_#ffffff]
+          "
+        />
+        <div
+          className="
+            pointer-events-none absolute
+            left-1/4 top-[45%]
+            h-[90px] w-[430px]
+            -translate-x-[10%]
+            rotate-[18deg]
+            rounded-[50%]
+            bg-[#e8e8e8]
+            opacity-35
+            shadow-[inset_10px_10px_22px_#d1d1d1,inset_-10px_-10px_22px_#ffffff]
+          "
+        />
+
+        <div className="relative z-10 mx-auto flex min-h-[650px] max-w-6xl flex-col items-center justify-center px-6 py-24 text-center">
+          <div className="mb-10 flex items-center justify-center gap-4 sm:gap-6 md:gap-10">
+            <div className="relative size-16 shrink-0 sm:size-20 md:size-24">
+              <img
+                src="/logo.png"
+                alt="Terrax"
+                className="
+                  absolute left-1/2 top-1/2
+                  size-45
+                  -translate-x-1/2 -translate-y-1/2
+                  scale-450
+                  object-contain
+                  brightness-0
+                  drop-shadow-[3px_3px_2px_#c4c4c4]
+                  drop-shadow-[-2px_-2px_2px_#ffffff]
+                "
+              />
+            </div>
+
+            <span className="whitespace-nowrap text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+              Terrax
+            </span>
           </div>
-          
 
           <p className="mb-5 text-sm font-semibold tracking-wide text-[#777]">
             OpenTelemetry-powered observability
