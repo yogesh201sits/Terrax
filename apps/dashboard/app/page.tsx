@@ -54,7 +54,6 @@ export default function Home() {
 
       {/* Hero */}
      <section className="relative overflow-hidden border-b border-[#d5d5d5]">
-      {/* Minimal neumorphic trace shape */}
         <div
           className="
             pointer-events-none absolute
@@ -164,6 +163,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      
 
       {/* What Terrax Does */}
       <section className="border-b border-[#d5d5d5]">
@@ -407,14 +407,13 @@ export default function Home() {
       <footer className="border-t border-[#d5d5d5]">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8 text-sm text-[#777] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-[#e8e8e8] shadow-[3px_3px_6px_#c9c9c9,-3px_-3px_6px_#ffffff]">
+            <div className="flex size-15 items-center justify-center rounded-lg">
               <img
                 src="/logo.png"
                 alt=""
-                className="size-5 object-contain brightness-0"
+                className="size-15 object-cover brightness-0"
               />
             </div>
-
             <span className="font-medium">Terrax</span>
           </div>
 
