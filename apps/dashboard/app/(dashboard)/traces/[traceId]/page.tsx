@@ -1,13 +1,11 @@
 import Link from "next/link";
 
 import { getTrace } from "@/lib/api/traces";
-import { TraceTree } from "@/components/traces/trace-tree";
 import { TraceSummary } from "@/components/traces/trace-summary";
-import { TraceTimelineToggle } from "@/components/traces/trace-timeline-toggle";
+import { TraceTree } from "@/components/traces/trace-tree";
+import { TraceTreeSection } from "@/components/traces/TraceTreeSection";
+import { TraceExplorer } from "@/components/traces/trace-explorer";
 import { CopyTraceId } from "@/components/traces/copy-trace-id";
-import { TraceGraph } from "@/components/traces/trace-graph";
-import { TraceGraphToggle } from "@/components/traces/trace-graph-toggle";
-import { TraceActivityChart } from "@/components/dashboard/trace-activity-chart";
 
 import type { TraceDetail } from "@/types/trace-detail";
 
@@ -26,21 +24,16 @@ export default async function TraceDetailPage({
 
   const trace = await getTrace(decodedTraceId);
 
-  const root = trace.tree.roots[0];
+  const roots = trace.tree.roots;
 
-  const spans = flattenTree(trace.tree.roots);
+  const spans = flattenTree(roots);
 
-  const startTime = getTraceStartTime(
-    trace.tree.roots,
-  );
-
-  const endTime = getTraceEndTime(
-    trace.tree.roots,
-  );
+  const startTime = getTraceStartTime(spans);
+  const endTime = getTraceEndTime(spans);
 
   const durationMs =
-    endTime !== null && startTime !== null
-      ? endTime - startTime
+    startTime !== null && endTime !== null
+      ? Math.max(0, endTime - startTime)
       : 0;
 
   const hasError = spans.some(
@@ -48,109 +41,171 @@ export default async function TraceDetailPage({
   );
 
   return (
-    <div className="p-6">
-      {/* Breadcrumb */}
-      <div className="mb-5">
-        <Link
-          href="/traces"
-          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          ← Traces
-        </Link>
-      </div>
+    <div className="min-h-full bg-background">
+      <div className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
 
-      {/* Trace Header */}
-      <div className="mb-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="truncate text-2xl font-semibold tracking-tight">
-                {root?.span.name ?? "Trace"}
-              </h1>
+        {/* ================================================================ */}
+        {/* Breadcrumb                                                        */}
+        {/* ================================================================ */}
 
-              <StatusBadge hasError={hasError} />
+        <div className="mb-5">
+          <Link
+            href="/traces"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <span className="text-sm">
+              ←
+            </span>
+
+            Traces
+          </Link>
+        </div>
+
+        {/* ================================================================ */}
+        {/* Trace Header                                                      */}
+        {/* ================================================================ */}
+
+        <section className="overflow-hidden rounded-xl border bg-card">
+          <div className="px-5 py-5 lg:px-6">
+
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+
+              {/* Trace identity */}
+              <div className="min-w-0">
+
+                <div className="flex flex-wrap items-center gap-2.5">
+
+                  <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight">
+                    {roots[0]?.span.name ?? "Trace"}
+                  </h1>
+
+                  <StatusBadge hasError={hasError} />
+
+                </div>
+
+                {/* Trace ID */}
+                <div className="mt-2.5 min-w-0">
+                  <CopyTraceId traceId={decodedTraceId} />
+                </div>
+
+              </div>
+
+              {/* Quick stats */}
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+
+                <StatPill
+                  label="Duration"
+                  value={formatDuration(durationMs)}
+                />
+
+                <StatPill
+                  label="Spans"
+                  value={String(spans.length)}
+                />
+
+              </div>
+
             </div>
 
-            {/* Trace ID */}
-            <div className="mt-2 flex max-w-full items-center">
-                <CopyTraceId traceId={decodedTraceId} />
+            {/* Metadata */}
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-4 text-xs text-muted-foreground">
+
+              {startTime !== null && (
+                <span>
+                  Started {formatDateTime(startTime)}
+                </span>
+              )}
+
+              {startTime !== null && endTime !== null && (
+                <>
+                  <span className="text-border">
+                    •
+                  </span>
+
+                  <span className="tabular-nums">
+                    {formatTime(startTime)}
+
+                    <span className="mx-1.5 text-border">
+                      →
+                    </span>
+
+                    {formatTime(endTime)}
+                  </span>
+
+                  <span className="text-border">
+                    •
+                  </span>
+
+                  <span className="tabular-nums">
+                    {formatDuration(durationMs)}
+                  </span>
+                </>
+              )}
+
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Metadata */}
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-          {startTime !== null && (
-            <span>
-              Started {formatDateTime(startTime)}
-            </span>
-          )}
+        {/* ================================================================ */}
+        {/* Summary                                                           */}
+        {/* ================================================================ */}
 
-          {startTime !== null && (
-            <span className="text-border">•</span>
-          )}
+        <section className="mt-5">
+          <TraceSummary roots={roots} />
+        </section>
 
-          <span className="tabular-nums">
-            Duration {formatDuration(durationMs)}
-          </span>
+        {/* ================================================================ */}
+        {/* Execution Tree                                                    */}
+        {/* ================================================================ */}
 
-          <span className="text-border">•</span>
+        {/* <section className="mt-8">
 
-          <span className="tabular-nums">
-            {spans.length} {spans.length === 1 ? "span" : "spans"}
-          </span>
-        </div>
+          <div className="mb-4">
+            <h2 className="text-base font-semibold tracking-tight">
+              Execution
+            </h2>
 
-        {/* Timing */}
-        {startTime !== null && endTime !== null && (
-          <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span>
-              {formatTime(startTime)}
-            </span>
-
-            <div className="h-px w-8 bg-border" />
-
-            <span>
-              {formatTime(endTime)}
-            </span>
-
-            <span className="ml-1">
-              ({formatDuration(durationMs)})
-            </span>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Explore the execution hierarchy of this trace.
+            </p>
           </div>
-        )}
+
+          <div className="overflow-hidden rounded-xl border bg-card">
+            <TraceTree roots={roots} />
+          </div>
+
+        </section> */}
+        <TraceTreeSection roots={roots} />
+
+
+        {/* ================================================================ */}
+        {/* Timeline / Graph                                                  */}
+        {/* ================================================================ */}
+
+        <section className="mt-8">
+
+          <div className="mb-4">
+            <h2 className="text-base font-semibold tracking-tight">
+              Visualization
+            </h2>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              Explore the timing and structure of the trace.
+            </p>
+          </div>
+
+          <TraceExplorer roots={roots} />
+
+        </section>
+
       </div>
-
-      {/* Summary */}
-      <TraceSummary roots={trace.tree.roots} />
-
-      {/* Execution */}
-      <TraceTree roots={trace.tree.roots} />
-
-      {/* Timeline */}
-      <TraceTimelineToggle roots={trace.tree.roots} />
-
-      <TraceGraphToggle roots={trace.tree.roots} />
-
-      {/* Graph */}
-      {/* <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold">
-            Graph Explorer
-          </h2>
-
-          <p className="text-sm text-muted-foreground">
-            Visualize the execution hierarchy of this trace.
-          </p>
-        </div>
-
-        <TraceGraph roots={trace.tree.roots} />
-      </div> */}
-
-
     </div>
   );
 }
+
+/* ========================================================================== */
+/* UI                                                                         */
+/* ========================================================================== */
 
 function StatusBadge({
   hasError,
@@ -159,16 +214,55 @@ function StatusBadge({
 }) {
   return (
     <span
-      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+      className={[
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5",
+        "text-[10px] font-medium uppercase tracking-wide",
+
         hasError
-          ? "text-destructive"
-          : "text-muted-foreground"
-      }`}
+          ? "border-destructive/30 bg-destructive/5 text-destructive"
+          : "border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
+      ].join(" ")}
     >
-      {hasError ? "ERROR" : "OK"}
+      <span
+        className={[
+          "size-1.5 rounded-full",
+
+          hasError
+            ? "bg-destructive"
+            : "bg-emerald-500",
+        ].join(" ")}
+      />
+
+      {hasError ? "Error" : "OK"}
     </span>
   );
 }
+
+function StatPill({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-md border bg-muted/20 px-2.5 py-1.5">
+
+      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+
+      <span className="text-xs font-semibold tabular-nums">
+        {value}
+      </span>
+
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* Trace Helpers                                                              */
+/* ========================================================================== */
 
 function flattenTree(
   roots: TraceDetail["tree"]["roots"],
@@ -193,10 +287,8 @@ function flattenTree(
 }
 
 function getTraceStartTime(
-  roots: TraceDetail["tree"]["roots"],
+  spans: TraceDetail["tree"]["roots"],
 ) {
-  const spans = flattenTree(roots);
-
   if (spans.length === 0) {
     return null;
   }
@@ -209,10 +301,8 @@ function getTraceStartTime(
 }
 
 function getTraceEndTime(
-  roots: TraceDetail["tree"]["roots"],
+  spans: TraceDetail["tree"]["roots"],
 ) {
-  const spans = flattenTree(roots);
-
   if (spans.length === 0) {
     return null;
   }
@@ -229,21 +319,27 @@ function formatDateTime(timestamp: number) {
 }
 
 function formatTime(timestamp: number) {
-  return new Date(timestamp).toLocaleTimeString(
-    [],
-    {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      fractionalSecondDigits: 3,
-    },
-  );
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    fractionalSecondDigits: 3,
+  });
 }
 
 function formatDuration(durationMs: number) {
   if (durationMs < 1000) {
-    return `${durationMs}ms`;
+    return `${Math.round(durationMs)}ms`;
   }
 
-  return `${(durationMs / 1000).toFixed(2)}s`;
+  if (durationMs < 60_000) {
+    return `${(durationMs / 1000).toFixed(2)}s`;
+  }
+
+  const minutes = Math.floor(durationMs / 60_000);
+
+  const seconds =
+    (durationMs % 60_000) / 1000;
+
+  return `${minutes}m ${seconds.toFixed(1)}s`;
 }
