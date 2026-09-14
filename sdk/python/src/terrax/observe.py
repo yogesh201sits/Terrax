@@ -5,10 +5,7 @@ from typing import Any, Callable, TypeVar, overload
 from opentelemetry.trace import Status, StatusCode
 
 from .otel import get_tracer
-from .serialization import (
-    bind_arguments,
-    safe_serialize,
-)
+from .serialization import bind_arguments, safe_serialize
 
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -26,6 +23,7 @@ def observe(
     *,
     name: str | None = None,
     capture_input: bool = False,
+    capture_output: bool = False,
 ) -> Callable[[F], F]:
     ...
 
@@ -35,6 +33,7 @@ def observe(
     *,
     name: str | None = None,
     capture_input: bool = False,
+    capture_output: bool = False,
 ):
     def decorator(fn: F) -> F:
         span_name = name or fn.__name__
@@ -59,7 +58,15 @@ def observe(
                         )
 
                     try:
-                        return await fn(*args, **kwargs)
+                        result = await fn(*args, **kwargs)
+
+                        if capture_output:
+                            span.set_attribute(
+                                "terrax.output",
+                                safe_serialize(result),
+                            )
+
+                        return result
 
                     except Exception as error:
                         span.record_exception(error)
@@ -88,7 +95,15 @@ def observe(
                     )
 
                 try:
-                    return fn(*args, **kwargs)
+                    result = fn(*args, **kwargs)
+
+                    if capture_output:
+                        span.set_attribute(
+                            "terrax.output",
+                            safe_serialize(result),
+                        )
+
+                    return result
 
                 except Exception as error:
                     span.record_exception(error)

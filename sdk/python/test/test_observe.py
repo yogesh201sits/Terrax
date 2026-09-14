@@ -206,3 +206,153 @@ def test_observe_does_not_capture_input_by_default(
     span = spans[0]
 
     assert "terrax.input" not in span.attributes
+
+def test_observe_captures_output(setup_tracing):
+    exporter = setup_tracing
+    exporter.clear()
+
+    @observe(capture_output=True)
+    def search(query):
+        return {
+            "results": ["doc1", "doc2"],
+            "count": 2,
+        }
+
+    result = search("OpenTelemetry")
+
+    assert result == {
+        "results": ["doc1", "doc2"],
+        "count": 2,
+    }
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.attributes["terrax.output"] == (
+        '{"results": ["doc1", "doc2"], "count": 2}'
+    )
+
+
+def test_observe_captures_input_and_output(
+    setup_tracing,
+):
+    exporter = setup_tracing
+    exporter.clear()
+
+    @observe(
+        capture_input=True,
+        capture_output=True,
+    )
+    def search(query, limit=10):
+        return {
+            "query": query,
+            "limit": limit,
+        }
+
+    result = search(
+        "OpenTelemetry",
+        limit=5,
+    )
+
+    assert result == {
+        "query": "OpenTelemetry",
+        "limit": 5,
+    }
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.attributes["terrax.input"] == (
+        '{"query": "OpenTelemetry", "limit": 5}'
+    )
+
+    assert span.attributes["terrax.output"] == (
+        '{"query": "OpenTelemetry", "limit": 5}'
+    )
+
+
+def test_observe_does_not_capture_output_by_default(
+    setup_tracing,
+):
+    exporter = setup_tracing
+    exporter.clear()
+
+    @observe()
+    def search():
+        return {"result": "hello"}
+
+    search()
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert "terrax.output" not in span.attributes
+
+
+def test_observe_does_not_capture_output_on_error(
+    setup_tracing,
+):
+    exporter = setup_tracing
+    exporter.clear()
+
+    @observe(capture_output=True)
+    def failing_agent():
+        raise ValueError("Something went wrong")
+
+    with pytest.raises(
+        ValueError,
+        match="Something went wrong",
+    ):
+        failing_agent()
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.status.status_code == (
+        trace.StatusCode.ERROR
+    )
+
+    assert "terrax.output" not in span.attributes
+
+
+def test_observe_async_output(setup_tracing):
+    exporter = setup_tracing
+    exporter.clear()
+
+    @observe(capture_output=True)
+    async def async_agent(query):
+        await asyncio.sleep(0.01)
+
+        return {
+            "answer": query,
+        }
+
+    result = asyncio.run(
+        async_agent("Hello")
+    )
+
+    assert result == {
+        "answer": "Hello",
+    }
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.attributes["terrax.output"] == (
+        '{"answer": "Hello"}'
+    )
