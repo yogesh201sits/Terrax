@@ -24,6 +24,7 @@ def observe(
     name: str | None = None,
     capture_input: bool = False,
     capture_output: bool = False,
+    attributes: dict[str, Any] | None = None,
 ) -> Callable[[F], F]:
     ...
 
@@ -34,6 +35,7 @@ def observe(
     name: str | None = None,
     capture_input: bool = False,
     capture_output: bool = False,
+    attributes: dict[str, Any] | None = None,
 ):
     def decorator(fn: F) -> F:
         span_name = name or fn.__name__
@@ -45,6 +47,10 @@ def observe(
                 tracer = get_tracer()
 
                 with tracer.start_as_current_span(span_name) as span:
+                    if attributes:
+                        for key, value in attributes.items():
+                            span.set_attribute(key, value)
+
                     if capture_input:
                         inputs = bind_arguments(
                             fn,
@@ -82,6 +88,10 @@ def observe(
             tracer = get_tracer()
 
             with tracer.start_as_current_span(span_name) as span:
+                if attributes:
+                    for key, value in attributes.items():
+                        span.set_attribute(key, value)
+
                 if capture_input:
                     inputs = bind_arguments(
                         fn,

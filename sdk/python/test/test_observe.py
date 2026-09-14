@@ -356,3 +356,56 @@ def test_observe_async_output(setup_tracing):
     assert span.attributes["terrax.output"] == (
         '{"answer": "Hello"}'
     )
+def test_observe_custom_attributes(setup_tracing):
+    exporter = setup_tracing
+    exporter.clear()
+
+    @observe(
+        name="agent.run",
+        attributes={
+            "agent.type": "research",
+            "experiment": "v2",
+            "agent.version": 2,
+        },
+    )
+    def run_agent(query):
+        return query
+
+    run_agent("OpenTelemetry")
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.name == "agent.run"
+    assert span.attributes["agent.type"] == "research"
+    assert span.attributes["experiment"] == "v2"
+    assert span.attributes["agent.version"] == 2
+
+
+def test_observe_attributes_work_without_custom_name(
+    setup_tracing,
+):
+    exporter = setup_tracing
+    exporter.clear()
+
+    @observe(
+        attributes={
+            "component": "retriever",
+        },
+    )
+    def retrieve(query):
+        return query
+
+    retrieve("OpenTelemetry")
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.name == "retrieve"
+    assert span.attributes["component"] == "retriever"
