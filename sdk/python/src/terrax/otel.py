@@ -49,5 +49,4 @@ def initialize_otel() -> TracerProvider:
 
 
 def get_tracer():
-    provider = initialize_otel()
-    return provider.get_tracer("terrax")
+    return trace.get_tracer("terrax")

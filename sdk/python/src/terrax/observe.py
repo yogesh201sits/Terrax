@@ -5,6 +5,10 @@ from typing import Any, Callable, TypeVar, overload
 from opentelemetry.trace import Status, StatusCode
 
 from .otel import get_tracer
+from .serialization import (
+    bind_arguments,
+    safe_serialize,
+)
 
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -21,6 +25,7 @@ def observe(
 def observe(
     *,
     name: str | None = None,
+    capture_input: bool = False,
 ) -> Callable[[F], F]:
     ...
 
@@ -29,6 +34,7 @@ def observe(
     func: F | None = None,
     *,
     name: str | None = None,
+    capture_input: bool = False,
 ):
     def decorator(fn: F) -> F:
         span_name = name or fn.__name__
@@ -40,11 +46,26 @@ def observe(
                 tracer = get_tracer()
 
                 with tracer.start_as_current_span(span_name) as span:
+                    if capture_input:
+                        inputs = bind_arguments(
+                            fn,
+                            args,
+                            kwargs,
+                        )
+
+                        span.set_attribute(
+                            "terrax.input",
+                            safe_serialize(inputs),
+                        )
+
                     try:
                         return await fn(*args, **kwargs)
+
                     except Exception as error:
                         span.record_exception(error)
-                        span.set_status(Status(StatusCode.ERROR))
+                        span.set_status(
+                            Status(StatusCode.ERROR)
+                        )
                         raise
 
             return async_wrapper  # type: ignore[return-value]
@@ -54,11 +75,26 @@ def observe(
             tracer = get_tracer()
 
             with tracer.start_as_current_span(span_name) as span:
+                if capture_input:
+                    inputs = bind_arguments(
+                        fn,
+                        args,
+                        kwargs,
+                    )
+
+                    span.set_attribute(
+                        "terrax.input",
+                        safe_serialize(inputs),
+                    )
+
                 try:
                     return fn(*args, **kwargs)
+
                 except Exception as error:
                     span.record_exception(error)
-                    span.set_status(Status(StatusCode.ERROR))
+                    span.set_status(
+                        Status(StatusCode.ERROR)
+                    )
                     raise
 
         return sync_wrapper  # type: ignore[return-value]
