@@ -426,3 +426,53 @@ def test_current_span_returns_active_span(
     span = spans[0]
 
     assert span.attributes["query.length"] == 10
+
+def test_observe_redacts_input(setup_tracing):
+    exporter = setup_tracing
+    exporter.clear()
+
+    @observe(
+        capture_input=True,
+        redact=["password"],
+    )
+    def login(username, password):
+        return "success"
+
+    login(
+        "yogesh",
+        "super-secret",
+    )
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    assert spans[0].attributes["terrax.input"] == (
+        '{"username": "yogesh", '
+        '"password": "[REDACTED]"}'
+    )
+
+def test_observe_redacts_output(setup_tracing):
+    exporter = setup_tracing
+    exporter.clear()
+
+    @observe(
+        capture_output=True,
+        redact=["token"],
+    )
+    def get_data():
+        return {
+            "result": "success",
+            "token": "secret-token",
+        }
+
+    get_data()
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    assert spans[0].attributes["terrax.output"] == (
+        '{"result": "success", '
+        '"token": "[REDACTED]"}'
+    )

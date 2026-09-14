@@ -7,6 +7,7 @@ from .otel import (
     initialize_otel,
 )
 from .semantic import SpanType
+from .events import event
 
 
 current_span = get_current_span
@@ -23,4 +24,5 @@ __all__ = [
     "observe",
     "tool",
     "workflow",
+    "event",
 ]

@@ -5,6 +5,7 @@ from typing import Any, Callable, TypeVar, overload
 from opentelemetry.trace import Status, StatusCode
 
 from .otel import get_tracer
+from .redaction import redact_data
 from .semantic import SpanType
 from .serialization import bind_arguments, safe_serialize
 
@@ -26,6 +27,7 @@ def observe(
     kind: SpanType | str = SpanType.GENERIC,
     capture_input: bool = False,
     capture_output: bool = False,
+    redact: list[str] | None = None,
     attributes: dict[str, Any] | None = None,
 ) -> Callable[[F], F]:
     ...
@@ -38,6 +40,7 @@ def observe(
     kind: SpanType | str = SpanType.GENERIC,
     capture_input: bool = False,
     capture_output: bool = False,
+    redact: list[str] | None = None,
     attributes: dict[str, Any] | None = None,
 ):
     try:
@@ -98,6 +101,12 @@ def observe(
                             kwargs,
                         )
 
+                        if redact:
+                            inputs = redact_data(
+                                inputs,
+                                redact,
+                            )
+
                         span.set_attribute(
                             "terrax.input",
                             safe_serialize(inputs),
@@ -110,9 +119,17 @@ def observe(
                         )
 
                         if capture_output:
+                            output = result
+
+                            if redact:
+                                output = redact_data(
+                                    output,
+                                    redact,
+                                )
+
                             span.set_attribute(
                                 "terrax.output",
-                                safe_serialize(result),
+                                safe_serialize(output),
                             )
 
                         return result
@@ -147,6 +164,12 @@ def observe(
                         kwargs,
                     )
 
+                    if redact:
+                        inputs = redact_data(
+                            inputs,
+                            redact,
+                        )
+
                     span.set_attribute(
                         "terrax.input",
                         safe_serialize(inputs),
@@ -159,9 +182,17 @@ def observe(
                     )
 
                     if capture_output:
+                        output = result
+
+                        if redact:
+                            output = redact_data(
+                                output,
+                                redact,
+                            )
+
                         span.set_attribute(
                             "terrax.output",
-                            safe_serialize(result),
+                            safe_serialize(output),
                         )
 
                     return result
