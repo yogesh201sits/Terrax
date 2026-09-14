@@ -1,4 +1,5 @@
 from opentelemetry import trace
+from opentelemetry.trace import NoOpTracerProvider
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter,
 )
@@ -19,6 +20,11 @@ def initialize_otel() -> TracerProvider:
         return _tracer_provider
 
     config = get_config()
+
+    current_provider = trace.get_tracer_provider()
+
+    if not isinstance(current_provider, NoOpTracerProvider):
+        return current_provider
 
     resource = Resource.create(
         {
@@ -54,3 +60,14 @@ def get_tracer():
 
 def get_current_span():
     return trace.get_current_span()
+
+
+def shutdown_otel() -> None:
+    global _tracer_provider
+
+    if _tracer_provider is None:
+        return
+
+    _tracer_provider.shutdown()
+
+    _tracer_provider = None

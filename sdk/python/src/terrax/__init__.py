@@ -5,6 +5,7 @@ from .otel import (
     get_current_span,
     get_tracer,
     initialize_otel,
+    shutdown_otel,
 )
 from .semantic import SpanType
 from .events import event
@@ -12,6 +13,7 @@ from .events import event
 
 current_span = get_current_span
 
+shutdown = shutdown_otel
 
 __all__ = [
     "TerraxConfig",
@@ -25,4 +27,6 @@ __all__ = [
     "tool",
     "workflow",
     "event",
+    "shutdown_otel",
+    "shutdown",
 ]

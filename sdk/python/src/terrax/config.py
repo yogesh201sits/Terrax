@@ -9,10 +9,22 @@ class TerraxConfig:
     service_name: str = "terrax-python"
     service_version: str = "0.1.0"
     environment: str = "development"
-
+    capture_input: bool = False
+    capture_output: bool = False
+    redact: list[str] | None = None
 
 _config: TerraxConfig | None = None
 
+def _parse_bool(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+
+    return value.strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 def configure(
     *,
@@ -21,6 +33,9 @@ def configure(
     service_name: str | None = None,
     service_version: str | None = None,
     environment: str | None = None,
+    capture_input: bool | None = None,
+    capture_output: bool | None = None,
+    redact: list[str] | None = None,
 ) -> TerraxConfig:
     global _config
 
@@ -36,6 +51,28 @@ def configure(
             "Pass api_key to configure() or set TERRAX_API_KEY."
         )
 
+    if capture_input is None:
+        capture_input = _parse_bool(
+            os.getenv("TERRAX_CAPTURE_INPUT"),
+            False,
+        )
+
+    if capture_output is None:
+        capture_output = _parse_bool(
+            os.getenv("TERRAX_CAPTURE_OUTPUT"),
+            False,
+        )
+
+    if redact is None:
+        redact_env = os.getenv("TERRAX_REDACT")
+
+        if redact_env:
+            redact = [
+                key.strip()
+            for key in redact_env.split(",")
+            if key.strip()
+        ]
+
     _config = TerraxConfig(
         api_key=api_key,
         endpoint=endpoint,
@@ -45,6 +82,9 @@ def configure(
         or os.getenv("TERRAX_SERVICE_VERSION", "0.1.0"),
         environment=environment
         or os.getenv("TERRAX_ENVIRONMENT", "development"),
+        capture_input=capture_input,
+        capture_output=capture_output,
+        redact=redact,
     )
 
     return _config

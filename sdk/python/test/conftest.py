@@ -1,5 +1,6 @@
 import pytest
 
+import terrax.config as terrax_config
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
@@ -21,3 +22,12 @@ def setup_tracing():
     trace.set_tracer_provider(provider)
 
     return exporter
+
+
+@pytest.fixture(autouse=True)
+def reset_terrax_config():
+    terrax_config._config = None
+
+    yield
+
+    terrax_config._config = None

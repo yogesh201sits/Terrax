@@ -16,8 +16,9 @@ def tool(func: F) -> F:
 def tool(
     *,
     name: str | None = None,
-    capture_input: bool = False,
-    capture_output: bool = False,
+    capture_input: bool | None = None,
+    capture_output: bool | None = None,
+    redact: list[str] | None = None,
     attributes: dict[str, Any] | None = None,
 ) -> Callable[[F], F]:
     ...
@@ -27,8 +28,9 @@ def tool(
     func: F | None = None,
     *,
     name: str | None = None,
-    capture_input: bool = False,
-    capture_output: bool = False,
+    capture_input: bool | None = None,
+    capture_output: bool | None = None,
+    redact: list[str] | None = None,
     attributes: dict[str, Any] | None = None,
 ):
     decorator = observe(
@@ -36,6 +38,7 @@ def tool(
         kind=SpanType.TOOL,
         capture_input=capture_input,
         capture_output=capture_output,
+        redact=redact,
         attributes=attributes,
     )
 
@@ -54,8 +57,9 @@ def workflow(func: F) -> F:
 def workflow(
     *,
     name: str | None = None,
-    capture_input: bool = False,
-    capture_output: bool = False,
+    capture_input: bool | None = None,
+    capture_output: bool | None = None,
+    redact: list[str] | None = None,
     attributes: dict[str, Any] | None = None,
 ) -> Callable[[F], F]:
     ...
@@ -65,8 +69,9 @@ def workflow(
     func: F | None = None,
     *,
     name: str | None = None,
-    capture_input: bool = False,
-    capture_output: bool = False,
+    capture_input: bool | None = None,
+    capture_output: bool | None = None,
+    redact: list[str] | None = None,
     attributes: dict[str, Any] | None = None,
 ):
     decorator = observe(
@@ -74,6 +79,7 @@ def workflow(
         kind=SpanType.WORKFLOW,
         capture_input=capture_input,
         capture_output=capture_output,
+        redact=redact,
         attributes=attributes,
     )
 

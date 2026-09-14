@@ -4,6 +4,7 @@ from typing import Any, Callable, TypeVar, overload
 
 from opentelemetry.trace import Status, StatusCode
 
+from .config import get_config
 from .otel import get_tracer
 from .redaction import redact_data
 from .semantic import SpanType
@@ -25,8 +26,8 @@ def observe(
     *,
     name: str | None = None,
     kind: SpanType | str = SpanType.GENERIC,
-    capture_input: bool = False,
-    capture_output: bool = False,
+    capture_input: bool | None = None,
+    capture_output: bool | None = None,
     redact: list[str] | None = None,
     attributes: dict[str, Any] | None = None,
 ) -> Callable[[F], F]:
@@ -38,8 +39,8 @@ def observe(
     *,
     name: str | None = None,
     kind: SpanType | str = SpanType.GENERIC,
-    capture_input: bool = False,
-    capture_output: bool = False,
+    capture_input: bool | None = None,
+    capture_output: bool | None = None,
     redact: list[str] | None = None,
     attributes: dict[str, Any] | None = None,
 ):
@@ -57,6 +58,35 @@ def observe(
         ) from None
 
     def decorator(fn: F) -> F:
+        try:
+            config = get_config()
+        except RuntimeError:
+            config = None
+
+        effective_capture_input = (
+            capture_input
+            if capture_input is not None
+            else config.capture_input
+            if config is not None
+            else False
+        )
+
+        effective_capture_output = (
+            capture_output
+            if capture_output is not None
+            else config.capture_output
+            if config is not None
+            else False
+        )
+
+        effective_redact = (
+            redact
+            if redact is not None
+            else config.redact
+            if config is not None
+            else None
+        )
+
         span_name = name or fn.__name__
 
         def configure_span(span: Any) -> None:
@@ -94,17 +124,17 @@ def observe(
                 ) as span:
                     configure_span(span)
 
-                    if capture_input:
+                    if effective_capture_input:
                         inputs = bind_arguments(
                             fn,
                             args,
                             kwargs,
                         )
 
-                        if redact:
+                        if effective_redact:
                             inputs = redact_data(
                                 inputs,
-                                redact,
+                                effective_redact,
                             )
 
                         span.set_attribute(
@@ -118,13 +148,13 @@ def observe(
                             **kwargs,
                         )
 
-                        if capture_output:
+                        if effective_capture_output:
                             output = result
 
-                            if redact:
+                            if effective_redact:
                                 output = redact_data(
                                     output,
-                                    redact,
+                                    effective_redact,
                                 )
 
                             span.set_attribute(
@@ -157,17 +187,17 @@ def observe(
             ) as span:
                 configure_span(span)
 
-                if capture_input:
+                if effective_capture_input:
                     inputs = bind_arguments(
                         fn,
                         args,
                         kwargs,
                     )
 
-                    if redact:
+                    if effective_redact:
                         inputs = redact_data(
                             inputs,
-                            redact,
+                            effective_redact,
                         )
 
                     span.set_attribute(
@@ -181,13 +211,13 @@ def observe(
                         **kwargs,
                     )
 
-                    if capture_output:
+                    if effective_capture_output:
                         output = result
 
-                        if redact:
+                        if effective_redact:
                             output = redact_data(
                                 output,
-                                redact,
+                                effective_redact,
                             )
 
                         span.set_attribute(

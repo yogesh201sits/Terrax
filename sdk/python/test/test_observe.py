@@ -476,3 +476,92 @@ def test_observe_redacts_output(setup_tracing):
         '{"result": "success", '
         '"token": "[REDACTED]"}'
     )
+
+def test_global_capture_configuration(setup_tracing):
+    from terrax import configure
+
+    exporter = setup_tracing
+    exporter.clear()
+
+    configure(
+        api_key="test-key",
+        capture_input=True,
+        capture_output=True,
+    )
+
+    @observe()
+    def run_agent(query):
+        return {"answer": query}
+
+    run_agent("hello")
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.attributes["terrax.input"] == '{"query": "hello"}'
+    assert span.attributes["terrax.output"] == '{"answer": "hello"}'
+def test_local_capture_overrides_global_configuration(setup_tracing):
+    from terrax import configure
+
+    exporter = setup_tracing
+    exporter.clear()
+
+    configure(
+        api_key="test-key",
+        capture_input=True,
+        capture_output=True,
+    )
+
+    @observe(
+        capture_input=False,
+        capture_output=False,
+    )
+    def sensitive_operation(password):
+        return {"password": password}
+
+    sensitive_operation("secret")
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert "terrax.input" not in span.attributes
+    assert "terrax.output" not in span.attributes
+def test_global_redaction_configuration(setup_tracing):
+    from terrax import configure
+
+    exporter = setup_tracing
+    exporter.clear()
+
+    configure(
+        api_key="test-key",
+        capture_input=True,
+        capture_output=True,
+        redact=["password"],
+    )
+
+    @observe()
+    def login(username, password):
+        return {
+            "username": username,
+            "password": password,
+        }
+
+    login("yogesh", "secret")
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert "secret" not in span.attributes["terrax.input"]
+    assert "[REDACTED]" in span.attributes["terrax.input"]
+
+    assert "secret" not in span.attributes["terrax.output"]
+    assert "[REDACTED]" in span.attributes["terrax.output"]
