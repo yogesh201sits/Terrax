@@ -4,6 +4,7 @@ from typing import Any, Callable, TypeVar, overload
 
 from opentelemetry.trace import Status, StatusCode
 
+from .client import ensure_initialized
 from .config import get_config
 from .otel import get_tracer
 from .redaction import redact_data
@@ -117,6 +118,8 @@ def observe(
                 *args: Any,
                 **kwargs: Any,
             ):
+                ensure_initialized()
+
                 tracer = get_tracer()
 
                 with tracer.start_as_current_span(
@@ -180,6 +183,8 @@ def observe(
             *args: Any,
             **kwargs: Any,
         ):
+            ensure_initialized()
+
             tracer = get_tracer()
 
             with tracer.start_as_current_span(

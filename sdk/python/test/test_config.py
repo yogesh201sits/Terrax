@@ -41,3 +41,11 @@ def test_explicit_config_overrides_environment(monkeypatch):
 
     assert config.capture_input is False
     assert config.capture_output is False
+def test_init_configures_terrax(monkeypatch):
+    from terrax import init
+
+    monkeypatch.setenv("TERRAX_API_KEY", "test-key")
+
+    config = init()
+
+    assert config.api_key == "test-key"
