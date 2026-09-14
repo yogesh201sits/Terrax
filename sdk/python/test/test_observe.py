@@ -13,22 +13,6 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 from terrax import observe
 from terrax import current_span
 
-
-@pytest.fixture(scope="module")
-def setup_tracing():
-    exporter = InMemorySpanExporter()
-
-    provider = TracerProvider()
-
-    provider.add_span_processor(
-        SimpleSpanProcessor(exporter)
-    )
-
-    trace.set_tracer_provider(provider)
-
-    return exporter
-
-
 def test_observe_creates_span(setup_tracing):
     exporter = setup_tracing
     exporter.clear()
