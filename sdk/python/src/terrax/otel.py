@@ -50,3 +50,7 @@ def initialize_otel() -> TracerProvider:
 
 def get_tracer():
     return trace.get_tracer("terrax")
+
+
+def get_current_span():
+    return trace.get_current_span()

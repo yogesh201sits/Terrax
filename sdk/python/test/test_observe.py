@@ -11,6 +11,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 
 from terrax import observe
+from terrax import current_span
 
 
 @pytest.fixture(scope="module")
@@ -409,3 +410,35 @@ def test_observe_attributes_work_without_custom_name(
 
     assert span.name == "retrieve"
     assert span.attributes["component"] == "retriever"
+
+def test_current_span_returns_active_span(
+    setup_tracing,
+):
+    exporter = setup_tracing
+    exporter.clear()
+
+    @observe()
+    def run_agent():
+        span = current_span()
+
+        assert span is not None
+        assert span.is_recording()
+
+        span.set_attribute(
+            "query.length",
+            10,
+        )
+
+        return "answer"
+
+    result = run_agent()
+
+    assert result == "answer"
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.attributes["query.length"] == 10
