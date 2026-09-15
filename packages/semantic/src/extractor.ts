@@ -2,7 +2,7 @@ import { classifySpan } from "./classifier.js";
 
 import type {
   RawSpan,
-  SemanticSpan
+  SemanticSpan,
 } from "./types.js";
 
 export function extractSemanticSpan(
@@ -22,7 +22,7 @@ export function extractSemanticSpan(
     startTime: span.startTime,
     endTime: span.endTime,
 
-    attributes
+    attributes,
   };
 
   /*
@@ -88,75 +88,103 @@ export function extractSemanticSpan(
   }
 
   /*
-   * Prompt
+   * Input
+   *
+   * GenAI spans use:
+   *   gen_ai.prompt
+   *
+   * Generic Terrax SDK spans use:
+   *   terrax.input
    */
-  const prompt = getJson(
-    attributes,
-    "gen_ai.prompt"
-  );
+  const prompt =
+    getJson(attributes, "gen_ai.prompt") ??
+    getJson(attributes, "terrax.input");
 
   if (prompt !== undefined) {
     semanticSpan.prompt = prompt;
   }
 
   /*
-   * Completion
+   * Output
+   *
+   * GenAI spans use:
+   *   gen_ai.completion
+   *
+   * Generic Terrax SDK spans use:
+   *   terrax.output
    */
-  const completion = getJson(
-    attributes,
-    "gen_ai.completion"
-  );
+  const completion =
+    getJson(attributes, "gen_ai.completion") ??
+    getJson(attributes, "terrax.output");
 
   if (completion !== undefined) {
     semanticSpan.completion = completion;
   }
 
   /*
-   * Tool calls
+   * AI-specific extraction
+   *
+   * Only perform tool/reasoning extraction for semantic
+   * AI spans. Generic @observe() inputs should remain
+   * generic input/output data.
    */
-  const toolCalls = extractToolCalls(prompt);
+  const isAiSpan =
+  semanticSpan.type === "llm" ||
+  semanticSpan.type === "tool" ||
+  semanticSpan.type === "workflow" ||
+  semanticSpan.type === "workflow_node";
 
-  if (toolCalls.length > 0) {
-    semanticSpan.toolCalls = toolCalls;
+  if (isAiSpan) {
+    /*
+     * Tool calls
+     */
+    const toolCalls = extractToolCalls(prompt);
+
+    if (toolCalls.length > 0) {
+      semanticSpan.toolCalls = toolCalls;
+    }
+
+    /*
+     * Tool input
+     */
+    const toolInput = extractToolInput(prompt);
+
+    if (toolInput !== undefined) {
+      semanticSpan.toolInput = toolInput;
+    }
+
+    /*
+     * Tool output
+     */
+    const toolOutput = extractToolOutput(completion);
+
+    if (toolOutput !== undefined) {
+      semanticSpan.toolOutput = toolOutput;
+    }
+
+    /*
+     * Reasoning tokens
+     */
+    const reasoningTokens =
+      extractReasoningTokens(prompt);
+
+    if (reasoningTokens !== undefined) {
+      semanticSpan.reasoningTokens =
+        reasoningTokens;
+    }
   }
 
+  /*
+   * Error
+   */
   const error = extractError(
     attributes,
-    span.events,
+    span.events
   );
 
   if (error) {
     semanticSpan.errorType = error.type;
     semanticSpan.errorMessage = error.message;
-  }
-
-  /*
- * Tool input
- */
-const toolInput = extractToolInput(prompt);
-
-if (toolInput !== undefined) {
-  semanticSpan.toolInput = toolInput;
-}
-
-/*
- * Tool output
- */
-const toolOutput = extractToolOutput(completion);
-
-if (toolOutput !== undefined) {
-  semanticSpan.toolOutput = toolOutput;
-}
-
-  /*
-   * Reasoning tokens
-   */
-  const reasoningTokens =
-    extractReasoningTokens(prompt);
-
-  if (reasoningTokens !== undefined) {
-    semanticSpan.reasoningTokens =
-      reasoningTokens;
   }
 
   return semanticSpan;
@@ -365,19 +393,19 @@ function extractToolOutput(
 
 function extractError(
   attributes: Record<string, unknown>,
-  events?: unknown[],
+  events?: unknown[]
 ): {
   type?: string;
   message?: string;
 } | undefined {
   const errorType = getString(
     attributes,
-    "error.type",
+    "error.type"
   );
 
   const errorMessage = getString(
     attributes,
-    "error.message",
+    "error.message"
   );
 
   if (errorType || errorMessage) {
