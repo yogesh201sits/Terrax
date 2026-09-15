@@ -565,3 +565,138 @@ def test_global_redaction_configuration(setup_tracing):
 
     assert "secret" not in span.attributes["terrax.output"]
     assert "[REDACTED]" in span.attributes["terrax.output"]
+def test_observe_lazy_initialization(setup_tracing, monkeypatch):
+    exporter = setup_tracing
+    exporter.clear()
+
+    monkeypatch.setenv(
+        "TERRAX_API_KEY",
+        "test-key",
+    )
+
+    from terrax import config
+
+    config._config = None
+
+    @observe()
+    def run_agent(query):
+        return f"Answer: {query}"
+
+    result = run_agent("Hello")
+
+    assert result == "Answer: Hello"
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+    assert spans[0].name == "run_agent"
+def test_lazy_initialization_uses_environment_configuration(
+    setup_tracing,
+    monkeypatch,
+):
+    exporter = setup_tracing
+    exporter.clear()
+
+    monkeypatch.setenv(
+        "TERRAX_API_KEY",
+        "test-key",
+    )
+    monkeypatch.setenv(
+        "TERRAX_CAPTURE_INPUT",
+        "true",
+    )
+    monkeypatch.setenv(
+        "TERRAX_CAPTURE_OUTPUT",
+        "true",
+    )
+
+    from terrax import config
+
+    config._config = None
+
+    @observe()
+    def run_agent(query):
+        return {
+            "answer": query,
+        }
+
+    result = run_agent("Hello")
+
+    assert result == {
+        "answer": "Hello",
+    }
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.attributes["terrax.input"] == (
+        '{"query": "Hello"}'
+    )
+
+    assert span.attributes["terrax.output"] == (
+        '{"answer": "Hello"}'
+    )
+def test_async_observe_lazy_initialization(
+    setup_tracing,
+    monkeypatch,
+):
+    exporter = setup_tracing
+    exporter.clear()
+
+    monkeypatch.setenv(
+        "TERRAX_API_KEY",
+        "test-key",
+    )
+
+    from terrax import config
+
+    config._config = None
+
+    @observe()
+    async def run_agent(query):
+        await asyncio.sleep(0.01)
+        return f"Answer: {query}"
+
+    result = asyncio.run(
+        run_agent("Hello")
+    )
+
+    assert result == "Answer: Hello"
+
+    spans = exporter.get_finished_spans()
+
+    assert len(spans) == 1
+    assert spans[0].name == "run_agent"
+def test_observe_sets_sdk_metadata(setup_tracing):
+    @observe()
+    def test_function():
+        return "ok"
+
+    test_function()
+
+    spans = setup_tracing.get_finished_spans()
+
+    assert len(spans) == 1
+
+    attributes = spans[0].attributes
+
+    assert attributes["terrax.sdk.name"] == "terrax"
+    assert attributes["terrax.sdk.version"] == "0.1.0"
+def test_observe_sets_function_metadata(setup_tracing):
+    @observe()
+    def test_function():
+        return "ok"
+
+    test_function()
+
+    spans = setup_tracing.get_finished_spans()
+
+    assert len(spans) == 1
+
+    attributes = spans[0].attributes
+
+    assert attributes["terrax.function.name"] == "test_function"
+    assert attributes["terrax.function.module"] == __name__

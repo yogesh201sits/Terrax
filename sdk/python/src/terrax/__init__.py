@@ -10,6 +10,7 @@ from .otel import (
 from .semantic import SpanType
 from .events import event
 from .client import init
+from .spans import Span, span
 
 
 current_span = get_current_span
@@ -31,4 +32,6 @@ __all__ = [
     "shutdown_otel",
     "shutdown",
     "init",
+    "Span",
+    "span",
 ]
