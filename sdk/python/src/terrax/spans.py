@@ -5,6 +5,7 @@ from opentelemetry.trace import Status, StatusCode
 from .client import ensure_initialized
 from .otel import get_tracer
 from .semantic import SpanType
+from .metadata import set_common_metadata
 
 
 class Span:
@@ -44,6 +45,8 @@ class Span:
         )
 
         self._span = self._context_manager.__enter__()
+
+        set_common_metadata(self._span)
 
         self._span.set_attribute(
             "terrax.span.type",

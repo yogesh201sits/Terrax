@@ -140,3 +140,15 @@ def test_span_add_event(setup_tracing):
 
     assert event.name == "retrieval.completed"
     assert event.attributes["document.count"] == 5
+def test_span_sets_sdk_metadata(setup_tracing):
+    with span("test_span"):
+        pass
+
+    spans = setup_tracing.get_finished_spans()
+
+    assert len(spans) == 1
+
+    attributes = spans[0].attributes
+
+    assert attributes["terrax.sdk.name"] == "terrax"
+    assert attributes["terrax.sdk.version"] == "0.1.0"

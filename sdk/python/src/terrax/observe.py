@@ -6,6 +6,10 @@ from opentelemetry.trace import Status, StatusCode
 
 from .client import ensure_initialized
 from .config import get_config
+from .metadata import (
+    set_common_metadata,
+    set_function_metadata,
+)
 from .otel import get_tracer
 from .redaction import redact_data
 from .semantic import SpanType
@@ -98,25 +102,25 @@ def observe(
             )
 
         def configure_span(span: Any) -> None:
+            set_common_metadata(span)
+
             span.set_attribute(
                 "terrax.span.type",
                 span_type.value,
             )
 
-            span.set_attribute(
-                "terrax.function.name",
-                fn.__name__,
+            set_function_metadata(
+                span,
+                function_name=fn.__name__,
+                module_name=fn.__module__,
             )
-
-            if fn.__module__:
-                span.set_attribute(
-                    "terrax.function.module",
-                    fn.__module__,
-                )
 
             if attributes:
                 for key, value in attributes.items():
-                    span.set_attribute(key, value)
+                    span.set_attribute(
+                        key,
+                        value,
+                    )
 
         if inspect.iscoroutinefunction(fn):
 

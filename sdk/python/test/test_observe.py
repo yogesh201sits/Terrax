@@ -670,4 +670,33 @@ def test_async_observe_lazy_initialization(
 
     assert len(spans) == 1
     assert spans[0].name == "run_agent"
-    
+def test_observe_sets_sdk_metadata(setup_tracing):
+    @observe()
+    def test_function():
+        return "ok"
+
+    test_function()
+
+    spans = setup_tracing.get_finished_spans()
+
+    assert len(spans) == 1
+
+    attributes = spans[0].attributes
+
+    assert attributes["terrax.sdk.name"] == "terrax"
+    assert attributes["terrax.sdk.version"] == "0.1.0"
+def test_observe_sets_function_metadata(setup_tracing):
+    @observe()
+    def test_function():
+        return "ok"
+
+    test_function()
+
+    spans = setup_tracing.get_finished_spans()
+
+    assert len(spans) == 1
+
+    attributes = spans[0].attributes
+
+    assert attributes["terrax.function.name"] == "test_function"
+    assert attributes["terrax.function.module"] == __name__
