@@ -1,4 +1,5 @@
 from terrax import configure
+import pytest
 
 
 def test_capture_input_from_environment(monkeypatch):
@@ -49,3 +50,54 @@ def test_init_configures_terrax(monkeypatch):
     config = init()
 
     assert config.api_key == "test-key"
+def test_configure_sets_payload_limits():
+    config = configure(
+        api_key="test-key",
+        max_input_size=5_000,
+        max_output_size=2_000,
+    )
+
+    assert config.max_input_size == 5_000
+    assert config.max_output_size == 2_000
+
+
+def test_configure_rejects_negative_input_size():
+    with pytest.raises(
+        ValueError,
+        match="max_input_size must be greater than or equal to 0",
+    ):
+        configure(
+            api_key="test-key",
+            max_input_size=-1,
+        )
+
+
+def test_configure_rejects_negative_output_size():
+    with pytest.raises(
+        ValueError,
+        match="max_output_size must be greater than or equal to 0",
+    ):
+        configure(
+            api_key="test-key",
+            max_output_size=-1,
+        )
+
+
+def test_configure_reads_payload_limits_from_environment(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "TERRAX_MAX_INPUT_SIZE",
+        "5000",
+    )
+    monkeypatch.setenv(
+        "TERRAX_MAX_OUTPUT_SIZE",
+        "2000",
+    )
+
+    config = configure(
+        api_key="test-key",
+    )
+
+    assert config.max_input_size == 5_000
+    assert config.max_output_size == 2_000

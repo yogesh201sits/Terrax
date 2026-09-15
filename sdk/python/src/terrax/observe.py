@@ -5,7 +5,7 @@ from typing import Any, Callable, TypeVar, overload
 from opentelemetry.trace import Status, StatusCode
 
 from .client import ensure_initialized
-from .config import get_config
+from .config import resolve_config
 from .metadata import (
     set_common_metadata,
     set_function_metadata,
@@ -34,6 +34,8 @@ def observe(
     capture_input: bool | None = None,
     capture_output: bool | None = None,
     redact: list[str] | None = None,
+    max_input_size: int | None = None,
+    max_output_size: int | None = None,
     attributes: dict[str, Any] | None = None,
 ) -> Callable[[F], F]:
     ...
@@ -47,6 +49,8 @@ def observe(
     capture_input: bool | None = None,
     capture_output: bool | None = None,
     redact: list[str] | None = None,
+    max_input_size: int | None = None,
+    max_output_size: int | None = None,
     attributes: dict[str, Any] | None = None,
 ):
     try:
@@ -64,42 +68,6 @@ def observe(
 
     def decorator(fn: F) -> F:
         span_name = name or fn.__name__
-
-        def get_effective_config():
-            try:
-                config = get_config()
-            except RuntimeError:
-                config = None
-
-            effective_capture_input = (
-                capture_input
-                if capture_input is not None
-                else config.capture_input
-                if config is not None
-                else False
-            )
-
-            effective_capture_output = (
-                capture_output
-                if capture_output is not None
-                else config.capture_output
-                if config is not None
-                else False
-            )
-
-            effective_redact = (
-                redact
-                if redact is not None
-                else config.redact
-                if config is not None
-                else None
-            )
-
-            return (
-                effective_capture_input,
-                effective_capture_output,
-                effective_redact,
-            )
 
         def configure_span(span: Any) -> None:
             set_common_metadata(span)
@@ -131,11 +99,13 @@ def observe(
             ):
                 ensure_initialized()
 
-                (
-                    effective_capture_input,
-                    effective_capture_output,
-                    effective_redact,
-                ) = get_effective_config()
+                resolved_config = resolve_config(
+                    capture_input=capture_input,
+                    capture_output=capture_output,
+                    redact=redact,
+                    max_input_size=max_input_size,
+                    max_output_size=max_output_size,
+                )
 
                 tracer = get_tracer()
 
@@ -144,22 +114,25 @@ def observe(
                 ) as span:
                     configure_span(span)
 
-                    if effective_capture_input:
+                    if resolved_config.capture_input:
                         inputs = bind_arguments(
                             fn,
                             args,
                             kwargs,
                         )
 
-                        if effective_redact:
+                        if resolved_config.redact:
                             inputs = redact_data(
                                 inputs,
-                                effective_redact,
+                                resolved_config.redact,
                             )
 
                         span.set_attribute(
                             "terrax.input",
-                            safe_serialize(inputs),
+                            safe_serialize(
+                                inputs,
+                                max_size=resolved_config.max_input_size,
+                            ),
                         )
 
                     try:
@@ -168,18 +141,21 @@ def observe(
                             **kwargs,
                         )
 
-                        if effective_capture_output:
+                        if resolved_config.capture_output:
                             output = result
 
-                            if effective_redact:
+                            if resolved_config.redact:
                                 output = redact_data(
                                     output,
-                                    effective_redact,
+                                    resolved_config.redact,
                                 )
 
                             span.set_attribute(
                                 "terrax.output",
-                                safe_serialize(output),
+                                safe_serialize(
+                                    output,
+                                    max_size=resolved_config.max_output_size,
+                                ),
                             )
 
                         return result
@@ -202,11 +178,13 @@ def observe(
         ):
             ensure_initialized()
 
-            (
-                effective_capture_input,
-                effective_capture_output,
-                effective_redact,
-            ) = get_effective_config()
+            resolved_config = resolve_config(
+                capture_input=capture_input,
+                capture_output=capture_output,
+                redact=redact,
+                max_input_size=max_input_size,
+                max_output_size=max_output_size,
+            )
 
             tracer = get_tracer()
 
@@ -215,22 +193,25 @@ def observe(
             ) as span:
                 configure_span(span)
 
-                if effective_capture_input:
+                if resolved_config.capture_input:
                     inputs = bind_arguments(
                         fn,
                         args,
                         kwargs,
                     )
 
-                    if effective_redact:
+                    if resolved_config.redact:
                         inputs = redact_data(
                             inputs,
-                            effective_redact,
+                            resolved_config.redact,
                         )
 
                     span.set_attribute(
                         "terrax.input",
-                        safe_serialize(inputs),
+                        safe_serialize(
+                            inputs,
+                            max_size=resolved_config.max_input_size,
+                        ),
                     )
 
                 try:
@@ -239,18 +220,21 @@ def observe(
                         **kwargs,
                     )
 
-                    if effective_capture_output:
+                    if resolved_config.capture_output:
                         output = result
 
-                        if effective_redact:
+                        if resolved_config.redact:
                             output = redact_data(
                                 output,
-                                effective_redact,
+                                resolved_config.redact,
                             )
 
                         span.set_attribute(
                             "terrax.output",
-                            safe_serialize(output),
+                            safe_serialize(
+                                output,
+                                max_size=resolved_config.max_output_size,
+                            ),
                         )
 
                     return result

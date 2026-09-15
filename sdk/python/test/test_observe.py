@@ -700,3 +700,30 @@ def test_observe_sets_function_metadata(setup_tracing):
 
     assert attributes["terrax.function.name"] == "test_function"
     assert attributes["terrax.function.module"] == __name__
+def test_observe_without_parentheses(setup_tracing):
+    @observe
+    def test_function():
+        return "ok"
+
+    result = test_function()
+
+    assert result == "ok"
+
+    spans = setup_tracing.get_finished_spans()
+
+    assert len(spans) == 1
+    assert spans[0].name == "test_function"
+@pytest.mark.asyncio
+async def test_async_observe_without_parentheses(setup_tracing):
+    @observe
+    async def test_function():
+        return "ok"
+
+    result = await test_function()
+
+    assert result == "ok"
+
+    spans = setup_tracing.get_finished_spans()
+
+    assert len(spans) == 1
+    assert spans[0].name == "test_function"

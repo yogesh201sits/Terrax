@@ -152,7 +152,6 @@ def test_serialize_circular_reference():
 
     assert "<circular_reference>" in result
 
-
 def test_serialize_truncates_large_payload():
     result = safe_serialize(
         {
@@ -161,5 +160,5 @@ def test_serialize_truncates_large_payload():
         max_size=100,
     )
 
-    assert len(result) > 100
+    assert len(result) <= 100
     assert result.endswith("...<truncated>")

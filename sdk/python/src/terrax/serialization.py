@@ -3,6 +3,7 @@ from typing import Any
 
 
 DEFAULT_MAX_SIZE = 10_000
+TRUNCATED_SUFFIX = "...<truncated>"
 
 
 def bind_arguments(
@@ -13,7 +14,6 @@ def bind_arguments(
     import inspect
 
     signature = inspect.signature(func)
-
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
 
@@ -26,70 +26,109 @@ def safe_serialize(
     max_size: int = DEFAULT_MAX_SIZE,
 ) -> str:
     """
-    Safely serialize a Python value into a JSON string.
+    Safely serialize a Python value for telemetry.
 
-    The result is always a string so it can safely be stored
-    as an OpenTelemetry span attribute.
+    Serialization must never raise an exception that breaks
+    the user's application.
     """
 
-    seen: set[int] = set()
-
-    def normalize(obj: Any) -> Any:
-        if obj is None:
-            return None
-
-        if isinstance(obj, (str, int, float, bool)):
-            return obj
-
-        object_id = id(obj)
-
-        if object_id in seen:
-            return "<circular_reference>"
-
-        if isinstance(obj, dict):
-            seen.add(object_id)
-
-            result = {
-                str(key): normalize(value)
-                for key, value in obj.items()
-            }
-
-            seen.remove(object_id)
-
-            return result
-
-        if isinstance(obj, (list, tuple, set)):
-            seen.add(object_id)
-
-            result = [
-                normalize(item)
-                for item in obj
-            ]
-
-            seen.remove(object_id)
-
-            return result
-
-        return repr(obj)
-
-    normalized = normalize(value)
-
     try:
+        normalized = _normalize(value)
+
         serialized = json.dumps(
             normalized,
             ensure_ascii=False,
             default=str,
         )
+
     except Exception:
-        serialized = json.dumps(
-            repr(value),
-            ensure_ascii=False,
-        )
+        try:
+            serialized = json.dumps(
+                repr(value),
+                ensure_ascii=False,
+            )
+        except Exception:
+            serialized = '"<serialization_failed>"'
 
-    if len(serialized) > max_size:
-        serialized = (
-            serialized[:max_size]
-            + "...<truncated>"
-        )
+    return _truncate(
+        serialized,
+        max_size=max_size,
+    )
 
-    return serialized
+
+def _normalize(
+    value: Any,
+    *,
+    seen: set[int] | None = None,
+) -> Any:
+    if seen is None:
+        seen = set()
+
+    if value is None:
+        return None
+
+    if isinstance(
+        value,
+        (str, int, float, bool),
+    ):
+        return value
+
+    object_id = id(value)
+
+    if object_id in seen:
+        return "<circular_reference>"
+
+    if isinstance(value, dict):
+        seen.add(object_id)
+
+        try:
+            return {
+                str(key): _normalize(
+                    item,
+                    seen=seen,
+                )
+                for key, item in value.items()
+            }
+        finally:
+            seen.remove(object_id)
+
+    if isinstance(
+        value,
+        (list, tuple, set, frozenset),
+    ):
+        seen.add(object_id)
+
+        try:
+            return [
+                _normalize(
+                    item,
+                    seen=seen,
+                )
+                for item in value
+            ]
+        finally:
+            seen.remove(object_id)
+
+    return repr(value)
+
+
+def _truncate(
+    value: str,
+    *,
+    max_size: int,
+) -> str:
+    if max_size <= 0:
+        return ""
+
+    if len(value) <= max_size:
+        return value
+
+    suffix_length = len(TRUNCATED_SUFFIX)
+
+    if max_size <= suffix_length:
+        return TRUNCATED_SUFFIX[:max_size]
+
+    return (
+        value[: max_size - suffix_length]
+        + TRUNCATED_SUFFIX
+    )

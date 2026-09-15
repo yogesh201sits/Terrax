@@ -12,6 +12,8 @@ def init(
     capture_input: bool | None = None,
     capture_output: bool | None = None,
     redact: list[str] | None = None,
+    max_input_size: int | None = None,
+    max_output_size: int | None = None,
 ) -> TerraxConfig:
     config = configure(
         api_key=api_key,
@@ -22,6 +24,8 @@ def init(
         capture_input=capture_input,
         capture_output=capture_output,
         redact=redact,
+        max_input_size=max_input_size,
+        max_output_size=max_output_size,
     )
 
     initialize_otel()
