@@ -1,5 +1,8 @@
+from .client import init
 from .config import TerraxConfig, configure, get_config
 from .decorators import llm, tool, workflow
+from .events import event
+from .genai import set_input, set_output
 from .observe import observe
 from .otel import (
     get_current_span,
@@ -8,26 +11,16 @@ from .otel import (
     shutdown_otel,
 )
 from .semantic import SpanType
-from .events import event
-from .client import init
-from .spans import Span, span
 from .semantic_helpers import (
     set_attribute,
-    set_model,
-    set_provider,
-    set_response,
-    set_usage,
-)
-from .semantic_helpers import (
-    set_attribute,
+    set_error,
     set_model,
     set_operation,
     set_provider,
     set_response,
     set_usage,
-    set_error
 )
-from .genai import set_input, set_output
+from .spans import Span, span
 
 
 current_span = get_current_span
@@ -56,10 +49,10 @@ __all__ = [
     "set_attribute",
     "set_model",
     "set_provider",
+    "set_operation",
     "set_response",
     "set_usage",
+    "set_error",
     "set_input",
     "set_output",
-    "set_operation",
-    "set_error",
 ]
