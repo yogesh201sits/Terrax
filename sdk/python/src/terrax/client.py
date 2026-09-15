@@ -31,6 +31,13 @@ def init(
 
 def ensure_initialized() -> None:
     try:
-        initialize_otel()
+        from .config import get_config
+
+        get_config()
     except RuntimeError:
-        return
+        try:
+            configure()
+        except ValueError:
+            return
+
+    initialize_otel()

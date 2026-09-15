@@ -23,7 +23,14 @@ def initialize_otel() -> TracerProvider:
 
     current_provider = trace.get_tracer_provider()
 
-    if not isinstance(current_provider, NoOpTracerProvider):
+    # Reuse an already configured OpenTelemetry provider.
+    #
+    # This is important for applications that already configure OTel,
+    # and for tests that install an InMemorySpanExporter.
+    if not isinstance(current_provider, NoOpTracerProvider) and not isinstance(
+        current_provider,
+        trace.ProxyTracerProvider,
+    ):
         return current_provider
 
     resource = Resource.create(
