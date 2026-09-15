@@ -3,9 +3,9 @@ from typing import Any
 from opentelemetry.trace import Status, StatusCode
 
 from .client import ensure_initialized
+from .metadata import set_common_metadata
 from .otel import get_tracer
 from .semantic import SpanType
-from .metadata import set_common_metadata
 
 
 class Span:
@@ -54,11 +54,7 @@ class Span:
         )
 
         if self.attributes:
-            for key, value in self.attributes.items():
-                self._span.set_attribute(
-                    key,
-                    value,
-                )
+            self.set_attributes(self.attributes)
 
         return self
 
@@ -69,11 +65,8 @@ class Span:
         traceback,
     ):
         if exc_value is not None:
-            self._span.record_exception(exc_value)
-
-            self._span.set_status(
-                Status(StatusCode.ERROR)
-            )
+            self.record_exception(exc_value)
+            self.set_status(StatusCode.ERROR)
 
         return self._context_manager.__exit__(
             exc_type,
@@ -86,16 +79,24 @@ class Span:
         key: str,
         value: Any,
     ) -> None:
-        if self._span is None:
-            raise RuntimeError(
-                "Span is not active. "
-                "Use it inside a with block."
-            )
+        self._require_active()
 
         self._span.set_attribute(
             key,
             value,
         )
+
+    def set_attributes(
+        self,
+        attributes: dict[str, Any],
+    ) -> None:
+        self._require_active()
+
+        for key, value in attributes.items():
+            self._span.set_attribute(
+                key,
+                value,
+            )
 
     def add_event(
         self,
@@ -103,16 +104,42 @@ class Span:
         *,
         attributes: dict[str, Any] | None = None,
     ) -> None:
-        if self._span is None:
-            raise RuntimeError(
-                "Span is not active. "
-                "Use it inside a with block."
-            )
+        self._require_active()
 
         self._span.add_event(
             name,
             attributes=attributes,
         )
+
+    def record_exception(
+        self,
+        exception: BaseException,
+    ) -> None:
+        self._require_active()
+
+        self._span.record_exception(exception)
+
+    def set_status(
+        self,
+        status: Status | StatusCode,
+        description: str | None = None,
+    ) -> None:
+        self._require_active()
+
+        if isinstance(status, StatusCode):
+            status = Status(
+                status,
+                description,
+            )
+
+        self._span.set_status(status)
+
+    def _require_active(self) -> None:
+        if self._span is None:
+            raise RuntimeError(
+                "Span is not active. "
+                "Use it inside a with block."
+            )
 
 
 def span(

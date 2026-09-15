@@ -3,6 +3,7 @@ import pytest
 from opentelemetry import trace
 
 from terrax import span
+from opentelemetry.trace import StatusCode
 
 
 def test_span_creates_span(setup_tracing):
@@ -152,3 +153,47 @@ def test_span_sets_sdk_metadata(setup_tracing):
 
     assert attributes["terrax.sdk.name"] == "terrax"
     assert attributes["terrax.sdk.version"] == "0.1.0"
+def test_span_set_attributes(setup_tracing):
+    with span("test_span") as current_span:
+        current_span.set_attributes({
+            "foo": "bar",
+            "count": 10,
+        })
+
+    spans = setup_tracing.get_finished_spans()
+
+    assert len(spans) == 1
+
+    attributes = spans[0].attributes
+
+    assert attributes["foo"] == "bar"
+    assert attributes["count"] == 10
+def test_span_record_exception(setup_tracing):
+    error = ValueError("something went wrong")
+
+    with span("test_span") as current_span:
+        current_span.record_exception(error)
+
+    spans = setup_tracing.get_finished_spans()
+
+    assert len(spans) == 1
+
+    events = spans[0].events
+
+    assert any(
+        event.name == "exception"
+        for event in events
+    )
+def test_span_set_status(setup_tracing):
+    with span("test_span") as current_span:
+        current_span.set_status(
+            StatusCode.ERROR,
+            "Something failed",
+        )
+
+    spans = setup_tracing.get_finished_spans()
+
+    assert len(spans) == 1
+
+    assert spans[0].status.status_code == StatusCode.ERROR
+    assert spans[0].status.description == "Something failed"
