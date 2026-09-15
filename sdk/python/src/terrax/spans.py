@@ -97,6 +97,52 @@ class Span:
                 key,
                 value,
             )
+    def set_model(
+        self,
+        model: str,
+    ) -> None:
+        """Set the GenAI model used by this span."""
+        self.set_attribute(
+            "gen_ai.request.model",
+            model,
+        )
+
+    def set_provider(
+        self,
+        provider: str,
+    ) -> None:
+        """Set the GenAI provider used by this span."""
+        self.set_attribute(
+            "gen_ai.provider.name",
+            provider,
+        )
+
+    def set_usage(
+        self,
+        *,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        reasoning_tokens: int | None = None,
+    ) -> None:
+        """Set GenAI token usage for this span."""
+        if input_tokens is not None:
+            self.set_attribute(
+                "gen_ai.usage.input_tokens",
+                input_tokens,
+            )
+
+        if output_tokens is not None:
+            self.set_attribute(
+                "gen_ai.usage.output_tokens",
+                output_tokens,
+            )
+
+        if reasoning_tokens is not None:
+            self.set_attribute(
+                "gen_ai.usage.reasoning.output_tokens",
+                reasoning_tokens,
+            )
+
 
     def add_event(
         self,

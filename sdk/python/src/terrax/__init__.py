@@ -1,5 +1,5 @@
 from .config import TerraxConfig, configure, get_config
-from .decorators import tool, workflow
+from .decorators import llm, tool, workflow
 from .observe import observe
 from .otel import (
     get_current_span,
@@ -11,11 +11,19 @@ from .semantic import SpanType
 from .events import event
 from .client import init
 from .spans import Span, span
+from .semantic_helpers import (
+    set_attribute,
+    set_model,
+    set_provider,
+    set_response,
+    set_usage,
+)
 
 
 current_span = get_current_span
 
 shutdown = shutdown_otel
+
 
 __all__ = [
     "TerraxConfig",
@@ -26,6 +34,7 @@ __all__ = [
     "get_tracer",
     "current_span",
     "observe",
+    "llm",
     "tool",
     "workflow",
     "event",
@@ -34,4 +43,9 @@ __all__ = [
     "init",
     "Span",
     "span",
+    "set_attribute",
+    "set_model",
+    "set_provider",
+    "set_response",
+    "set_usage",
 ]
