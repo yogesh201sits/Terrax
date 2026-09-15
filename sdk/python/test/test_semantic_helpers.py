@@ -7,7 +7,7 @@ from terrax import (
     set_response,
     set_usage,
 )
-
+from terrax import set_operation
 
 def test_set_model(setup_tracing):
     tracer = trace.get_tracer("test")
@@ -109,4 +109,17 @@ def test_helpers_do_not_fail_without_active_span():
     set_attribute(
         "test.attribute",
         "value",
+    )
+def test_set_operation(setup_tracing):
+    tracer = trace.get_tracer("test")
+
+    with tracer.start_as_current_span("llm"):
+        set_operation("chat")
+
+    exported = setup_tracing.get_finished_spans()
+
+    assert len(exported) == 1
+    assert (
+        exported[0].attributes["gen_ai.operation.name"]
+        == "chat"
     )

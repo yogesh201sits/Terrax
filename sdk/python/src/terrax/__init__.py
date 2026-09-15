@@ -18,6 +18,16 @@ from .semantic_helpers import (
     set_response,
     set_usage,
 )
+from .semantic_helpers import (
+    set_attribute,
+    set_model,
+    set_operation,
+    set_provider,
+    set_response,
+    set_usage,
+    set_error
+)
+from .genai import set_input, set_output
 
 
 current_span = get_current_span
@@ -48,4 +58,8 @@ __all__ = [
     "set_provider",
     "set_response",
     "set_usage",
+    "set_input",
+    "set_output",
+    "set_operation",
+    "set_error",
 ]
