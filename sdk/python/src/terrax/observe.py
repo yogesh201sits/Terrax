@@ -59,36 +59,43 @@ def observe(
         ) from None
 
     def decorator(fn: F) -> F:
-        try:
-            config = get_config()
-        except RuntimeError:
-            config = None
-
-        effective_capture_input = (
-            capture_input
-            if capture_input is not None
-            else config.capture_input
-            if config is not None
-            else False
-        )
-
-        effective_capture_output = (
-            capture_output
-            if capture_output is not None
-            else config.capture_output
-            if config is not None
-            else False
-        )
-
-        effective_redact = (
-            redact
-            if redact is not None
-            else config.redact
-            if config is not None
-            else None
-        )
-
         span_name = name or fn.__name__
+
+        def get_effective_config():
+            try:
+                config = get_config()
+            except RuntimeError:
+                config = None
+
+            effective_capture_input = (
+                capture_input
+                if capture_input is not None
+                else config.capture_input
+                if config is not None
+                else False
+            )
+
+            effective_capture_output = (
+                capture_output
+                if capture_output is not None
+                else config.capture_output
+                if config is not None
+                else False
+            )
+
+            effective_redact = (
+                redact
+                if redact is not None
+                else config.redact
+                if config is not None
+                else None
+            )
+
+            return (
+                effective_capture_input,
+                effective_capture_output,
+                effective_redact,
+            )
 
         def configure_span(span: Any) -> None:
             span.set_attribute(
@@ -119,6 +126,12 @@ def observe(
                 **kwargs: Any,
             ):
                 ensure_initialized()
+
+                (
+                    effective_capture_input,
+                    effective_capture_output,
+                    effective_redact,
+                ) = get_effective_config()
 
                 tracer = get_tracer()
 
@@ -184,6 +197,12 @@ def observe(
             **kwargs: Any,
         ):
             ensure_initialized()
+
+            (
+                effective_capture_input,
+                effective_capture_output,
+                effective_redact,
+            ) = get_effective_config()
 
             tracer = get_tracer()
 
