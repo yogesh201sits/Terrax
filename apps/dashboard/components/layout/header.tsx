@@ -36,18 +36,21 @@ export function Header() {
 
   return (
     <header
-      className="
-        flex
-        h-14
-        shrink-0
-        items-center
-        justify-between
-        border-b
-        border-[#d8d8d8]
-        bg-[#e8e8e8]
-        shadow-[0_3px_10px_#cfcfcf]
-      "
-    >
+  className="
+    sticky
+    top-0
+    z-50
+    flex
+    h-14
+    shrink-0
+    items-center
+    justify-between
+    border-b
+    border-[#d8d8d8]
+    bg-[#e8e8e8]
+    shadow-[0_3px_10px_#cfcfcf]
+  "
+>
       {/* Left */}
       <div className="flex items-center gap-2 px-4">
         <SidebarTrigger
