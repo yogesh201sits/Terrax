@@ -9,6 +9,7 @@ import {
   Wrench,
   XCircle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import type { LucideIcon } from "lucide-react";
 
@@ -32,66 +33,80 @@ export function TraceSummary({ roots }: Props) {
     (node) => node.span.type === "tool",
   ).length;
 
-  const totalTokens = spans.reduce((total, node) => {
-    return total + (node.span.totalTokens ?? 0);
-  }, 0);
+  const totalTokens = spans.reduce(
+    (total, node) => total + (node.span.totalTokens ?? 0),
+    0,
+  );
 
   const hasError = spans.some(
     (node) => Boolean(node.span.errorMessage),
   );
 
   return (
-    <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-      <Stat
-        icon={Clock3}
+    <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 border-b pb-4">
+      <SummaryStat
         label="Duration"
         value={formatDuration(durationMs)}
       />
 
-      <Stat
-        icon={Activity}
+      <SummaryStat
         label="Spans"
         value={spans.length.toLocaleString()}
       />
 
-      <Stat
-        icon={Bot}
+      <SummaryStat
         label="LLM Calls"
         value={llmCalls.toLocaleString()}
       />
 
-      <Stat
-        icon={Wrench}
+      <SummaryStat
         label="Tool Calls"
         value={toolCalls.toLocaleString()}
       />
 
-      <Stat
-        icon={Coins}
+      <SummaryStat
         label="Tokens"
         value={totalTokens.toLocaleString()}
       />
 
-      {/* Trace status */}
-      <div className="col-span-2 rounded-lg border p-4 md:col-span-3 lg:col-span-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {hasError ? (
-              <XCircle className="size-4 text-destructive" />
-            ) : (
-              <CheckCircle2 className="size-4" />
-            )}
+      <div className="ml-auto flex items-center">
+        <span
+          className={
+            hasError
+              ? "inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-medium text-destructive"
+              : "inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
+          }
+        >
+          <span
+            className={
+              hasError
+                ? "size-1.5 rounded-full bg-destructive"
+                : "size-1.5 rounded-full bg-emerald-500"
+            }
+          />
 
-            <span className="text-sm font-medium">
-              {hasError ? "Trace failed" : "Trace completed successfully"}
-            </span>
-          </div>
-
-          <span className="text-xs text-muted-foreground">
-            {spans.length} {spans.length === 1 ? "span" : "spans"}
-          </span>
-        </div>
+          {hasError ? "Failed" : "Completed"}
+        </span>
       </div>
+    </div>
+  );
+}
+function SummaryStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+
+      <span className="font-mono text-sm font-semibold tabular-nums">
+        {value}
+      </span>
     </div>
   );
 }

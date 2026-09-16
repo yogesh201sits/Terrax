@@ -65,34 +65,28 @@ export default async function TraceDetailPage({
         {/* Trace Header                                                      */}
         {/* ================================================================ */}
 
-        <section className="overflow-hidden rounded-xl border bg-card">
-          <div className="px-5 py-5 lg:px-6">
-
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-
+        <section className="overflow-hidden border-b bg-card">
+          <div className="px-4 py-4 lg:px-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               {/* Trace identity */}
-              <div className="min-w-0">
-
-                <div className="flex flex-wrap items-center gap-2.5">
-
-                  <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight">
+              <div className="min-w-0 flex-1">
+                {/* Name + status */}
+                <div className="flex min-w-0 items-center gap-2">
+                  <h1 className="min-w-0 truncate text-base font-semibold tracking-tight">
                     {roots[0]?.span.name ?? "Trace"}
                   </h1>
 
                   <StatusBadge hasError={hasError} />
-
                 </div>
 
                 {/* Trace ID */}
-                <div className="mt-2.5 min-w-0">
+                <div className="mt-1.5">
                   <CopyTraceId traceId={decodedTraceId} />
                 </div>
-
               </div>
 
               {/* Quick stats */}
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
-
+              <div className="flex shrink-0 items-center divide-x rounded-md border bg-background">
                 <StatPill
                   label="Duration"
                   value={formatDuration(durationMs)}
@@ -102,47 +96,44 @@ export default async function TraceDetailPage({
                   label="Spans"
                   value={String(spans.length)}
                 />
-
               </div>
-
             </div>
 
             {/* Metadata */}
-            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-4 text-xs text-muted-foreground">
+            {(startTime !== null ||
+              (startTime !== null && endTime !== null)) && (
+                <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+                  {startTime !== null && (
+                    <>
+                      <span>Started {formatDateTime(startTime)}</span>
+                    </>
+                  )}
 
-              {startTime !== null && (
-                <span>
-                  Started {formatDateTime(startTime)}
-                </span>
+                  {startTime !== null && endTime !== null && (
+                    <>
+                      <span className="text-muted-foreground/40">
+                        ·
+                      </span>
+
+                      <span className="font-mono tabular-nums">
+                        {formatTime(startTime)}
+                        <span className="mx-1.5 text-muted-foreground/40">
+                          →
+                        </span>
+                        {formatTime(endTime)}
+                      </span>
+
+                      <span className="text-muted-foreground/40">
+                        ·
+                      </span>
+
+                      <span className="font-mono tabular-nums">
+                        {formatDuration(durationMs)}
+                      </span>
+                    </>
+                  )}
+                </div>
               )}
-
-              {startTime !== null && endTime !== null && (
-                <>
-                  <span className="text-border">
-                    •
-                  </span>
-
-                  <span className="tabular-nums">
-                    {formatTime(startTime)}
-
-                    <span className="mx-1.5 text-border">
-                      →
-                    </span>
-
-                    {formatTime(endTime)}
-                  </span>
-
-                  <span className="text-border">
-                    •
-                  </span>
-
-                  <span className="tabular-nums">
-                    {formatDuration(durationMs)}
-                  </span>
-                </>
-              )}
-
-            </div>
           </div>
         </section>
 
