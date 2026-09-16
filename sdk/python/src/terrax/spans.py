@@ -179,6 +179,30 @@ class Span:
             )
 
         self._span.set_status(status)
+    def set_response(
+        self,
+        *,
+        response_id: str | None = None,
+        model: str | None = None,
+        finish_reasons: list[str] | None = None,
+    ) -> None:
+        if response_id is not None:
+            self.set_attribute(
+                "gen_ai.response.id",
+                response_id,
+            )
+
+        if model is not None:
+            self.set_attribute(
+                "gen_ai.response.model",
+                model,
+            )
+
+        if finish_reasons is not None:
+            self.set_attribute(
+                "gen_ai.response.finish_reasons",
+                finish_reasons,
+            )
 
     def _require_active(self) -> None:
         if self._span is None:
@@ -186,6 +210,7 @@ class Span:
                 "Span is not active. "
                 "Use it inside a with block."
             )
+    
 
 
 def span(
