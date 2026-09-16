@@ -34,6 +34,8 @@ def observe(
     redact: list[str] | None = None,
     max_input_size: int | None = None,
     max_output_size: int | None = None,
+    input_attribute: str | None = None,
+    output_attribute: str | None = None,
     attributes: dict[str, Any] | None = None,
 ) -> Callable[[F], F]:
     ...
@@ -49,6 +51,8 @@ def observe(
     redact: list[str] | None = None,
     max_input_size: int | None = None,
     max_output_size: int | None = None,
+    input_attribute: str | None = None,
+    output_attribute: str | None = None,
     attributes: dict[str, Any] | None = None,
 ):
     try:
@@ -123,7 +127,7 @@ def observe(
 
             safe_telemetry(
                 lambda: span.set_attribute(
-                    "terrax.input",
+                    input_attribute or "terrax.input",
                     serialized,
                 )
             )
@@ -152,7 +156,7 @@ def observe(
 
             safe_telemetry(
                 lambda: span.set_attribute(
-                    "terrax.output",
+                    output_attribute or "terrax.output",
                     serialized,
                 )
             )

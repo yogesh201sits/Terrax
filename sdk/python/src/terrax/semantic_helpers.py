@@ -60,6 +60,11 @@ def set_usage(
             reasoning_tokens,
         )
 
+    if input_tokens is not None and output_tokens is not None:
+        span.set_attribute(
+            "gen_ai.usage.total_tokens",
+            input_tokens + output_tokens,
+        )
 
 def set_response(
     *,
