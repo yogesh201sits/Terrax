@@ -2,7 +2,7 @@ import { classifySpan } from "./classifier.js";
 
 import type {
   RawSpan,
-  SemanticSpan
+  SemanticSpan,
 } from "./types.js";
 
 export function extractSemanticSpan(
@@ -22,11 +22,15 @@ export function extractSemanticSpan(
     startTime: span.startTime,
     endTime: span.endTime,
 
-    attributes
+    attributes,
   };
 
   /*
    * Framework
+   *
+   * Keep framework-specific attributes.
+   * Terrax should understand external instrumentations
+   * instead of requiring them to emit Terrax-specific data.
    */
   const integration = getString(
     attributes,
@@ -43,11 +47,21 @@ export function extractSemanticSpan(
 
   /*
    * Provider
+   *
+   * LangSmith first.
+   *
+   * gen_ai.provider.name is used as a fallback for
+   * generic OpenTelemetry GenAI instrumentation.
    */
-  const provider = getString(
-    attributes,
-    "langsmith.metadata.ls_provider"
-  );
+  const provider =
+    getString(
+      attributes,
+      "langsmith.metadata.ls_provider"
+    ) ??
+    getString(
+      attributes,
+      "gen_ai.provider.name"
+    );
 
   if (provider) {
     semanticSpan.provider = provider;
@@ -55,11 +69,19 @@ export function extractSemanticSpan(
 
   /*
    * Model
+   *
+   * Prefer request model.
+   * Fall back to response model.
    */
-  const model = getString(
-    attributes,
-    "gen_ai.request.model"
-  );
+  const model =
+    getString(
+      attributes,
+      "gen_ai.request.model"
+    ) ??
+    getString(
+      attributes,
+      "gen_ai.response.model"
+    );
 
   if (model) {
     semanticSpan.model = model;
@@ -83,84 +105,240 @@ export function extractSemanticSpan(
     "gen_ai.usage.total_tokens"
   );
 
-  if (span.status) {
-    semanticSpan.status = span.status;
-  }
-
-  /*
-   * Prompt
-   */
-  const prompt = getJson(
-    attributes,
-    "gen_ai.prompt"
-  );
-
-  if (prompt !== undefined) {
-    semanticSpan.prompt = prompt;
-  }
-
-  /*
-   * Completion
-   */
-  const completion = getJson(
-    attributes,
-    "gen_ai.completion"
-  );
-
-  if (completion !== undefined) {
-    semanticSpan.completion = completion;
-  }
-
-  /*
-   * Tool calls
-   */
-  const toolCalls = extractToolCalls(prompt);
-
-  if (toolCalls.length > 0) {
-    semanticSpan.toolCalls = toolCalls;
-  }
-
-  const error = extractError(
-    attributes,
-    span.events,
-  );
-
-  if (error) {
-    semanticSpan.errorType = error.type;
-    semanticSpan.errorMessage = error.message;
-  }
-
-  /*
- * Tool input
- */
-const toolInput = extractToolInput(prompt);
-
-if (toolInput !== undefined) {
-  semanticSpan.toolInput = toolInput;
-}
-
-/*
- * Tool output
- */
-const toolOutput = extractToolOutput(completion);
-
-if (toolOutput !== undefined) {
-  semanticSpan.toolOutput = toolOutput;
-}
-
   /*
    * Reasoning tokens
+   *
+   * Terrax SDK emits this directly.
+   *
+   * If another instrumentation stores reasoning
+   * information inside its messages, we also attempt
+   * the existing fallback extraction below.
    */
   const reasoningTokens =
-    extractReasoningTokens(prompt);
+    getNumber(
+      attributes,
+      "gen_ai.usage.reasoning.output_tokens"
+    );
 
   if (reasoningTokens !== undefined) {
     semanticSpan.reasoningTokens =
       reasoningTokens;
   }
 
+  /*
+   * Status
+   */
+  if (span.status) {
+    semanticSpan.status = span.status;
+  }
+
+  /*
+   * Input normalization
+   *
+   * Supported sources:
+   *
+   * 1. Current OTel GenAI:
+   *      gen_ai.input.messages
+   *
+   * 2. Existing / older GenAI instrumentation:
+   *      gen_ai.prompt
+   *
+   * 3. Terrax SDK generic:
+   *      terrax.input
+   *
+   * The first available value wins.
+   */
+  const prompt =
+    getJson(
+      attributes,
+      "gen_ai.input.messages"
+    ) ??
+    getJson(
+      attributes,
+      "gen_ai.prompt"
+    ) ??
+    getJson(
+      attributes,
+      "terrax.input"
+    );
+
+  if (prompt !== undefined) {
+    semanticSpan.prompt = prompt;
+  }
+
+  /*
+   * Output normalization
+   *
+   * Supported sources:
+   *
+   * 1. Current OTel GenAI:
+   *      gen_ai.output.messages
+   *
+   * 2. Existing / older GenAI instrumentation:
+   *      gen_ai.completion
+   *
+   * 3. Terrax SDK generic:
+   *      terrax.output
+   */
+  const completion =
+    getJson(
+      attributes,
+      "gen_ai.output.messages"
+    ) ??
+    getJson(
+      attributes,
+      "gen_ai.completion"
+    ) ??
+    getJson(
+      attributes,
+      "terrax.output"
+    );
+
+  if (completion !== undefined) {
+    semanticSpan.completion = completion;
+  }
+
+  /*
+   * AI-specific extraction
+   *
+   * Generic @observe() spans remain generic.
+   */
+  const isAiSpan =
+    semanticSpan.type === "llm" ||
+    semanticSpan.type === "tool" ||
+    semanticSpan.type === "workflow" ||
+    semanticSpan.type === "workflow_node";
+
+  if (isAiSpan) {
+    /*
+     * Tool calls embedded inside model input messages.
+     *
+     * Example:
+     *
+     * {
+     *   messages: [
+     *     {
+     *       role: "assistant",
+     *       parts: [
+     *         {
+     *           type: "tool_call",
+     *           ...
+     *         }
+     *       ]
+     *     }
+     *   ]
+     * }
+     */
+    const toolCalls =
+      extractToolCalls(prompt);
+
+    if (toolCalls.length > 0) {
+      semanticSpan.toolCalls =
+        toolCalls;
+    }
+
+    /*
+     * Direct tool input.
+     *
+     * Terrax @observe_tool emits:
+     *
+     * gen_ai.tool.call.arguments
+     *
+     * If unavailable, fall back to the existing
+     * message-based extraction.
+     */
+    const directToolInput =
+      getJson(
+        attributes,
+        "gen_ai.tool.call.arguments"
+      );
+
+    if (directToolInput !== undefined) {
+      semanticSpan.toolInput =
+        directToolInput;
+    } else {
+      const toolInput =
+        extractToolInput(prompt);
+
+      if (toolInput !== undefined) {
+        semanticSpan.toolInput =
+          toolInput;
+      }
+    }
+
+    /*
+     * Direct tool output.
+     *
+     * Terrax @observe_tool emits:
+     *
+     * gen_ai.tool.call.result
+     *
+     * If unavailable, fall back to the existing
+     * message-based extraction.
+     */
+    const directToolOutput =
+      getJson(
+        attributes,
+        "gen_ai.tool.call.result"
+      );
+
+    if (directToolOutput !== undefined) {
+      semanticSpan.toolOutput =
+        directToolOutput;
+    } else {
+      const toolOutput =
+        extractToolOutput(completion);
+
+      if (toolOutput !== undefined) {
+        semanticSpan.toolOutput =
+          toolOutput;
+      }
+    }
+
+    /*
+     * Backward-compatible reasoning extraction.
+     */
+    if (
+      semanticSpan.reasoningTokens ===
+      undefined
+    ) {
+      const extractedReasoning =
+        extractReasoningTokens(prompt);
+
+      if (
+        extractedReasoning !==
+        undefined
+      ) {
+        semanticSpan.reasoningTokens =
+          extractedReasoning;
+      }
+    }
+  }
+
+  /*
+   * Error
+   */
+  const error = extractError(
+    attributes,
+    span.events
+  );
+
+  if (error) {
+    semanticSpan.errorType =
+      error.type;
+
+    semanticSpan.errorMessage =
+      error.message;
+  }
+
   return semanticSpan;
 }
+
+/*
+ * --------------------------------------------------
+ * Attribute helpers
+ * --------------------------------------------------
+ */
 
 function getString(
   attributes: Record<string, unknown>,
@@ -194,6 +372,21 @@ function getJson(
 ): unknown | undefined {
   const value = attributes[key];
 
+  /*
+   * OTLP decoding may give us either:
+   *
+   * - a JSON string
+   * - an already parsed object
+   *
+   * Support both.
+   */
+  if (
+    value !== null &&
+    typeof value === "object"
+  ) {
+    return value;
+  }
+
   if (typeof value !== "string") {
     return undefined;
   }
@@ -205,10 +398,19 @@ function getJson(
   }
 }
 
+/*
+ * --------------------------------------------------
+ * Tool extraction
+ * --------------------------------------------------
+ */
+
 function extractToolCalls(
   prompt: unknown
 ): unknown[] {
-  if (!prompt || typeof prompt !== "object") {
+  if (
+    !prompt ||
+    typeof prompt !== "object"
+  ) {
     return [];
   }
 
@@ -232,28 +434,132 @@ function extractToolCalls(
       continue;
     }
 
-    const calls = (
+    const messageObject =
       message as {
         tool_calls?: unknown;
-      }
-    ).tool_calls;
+        parts?: unknown;
+      };
 
-    if (!Array.isArray(calls)) {
-      continue;
+    /*
+     * LangChain / existing instrumentation
+     */
+    if (
+      Array.isArray(
+        messageObject.tool_calls
+      )
+    ) {
+      for (
+        const call of
+          messageObject.tool_calls
+      ) {
+        toolCalls.push(call);
+      }
     }
 
-    for (const call of calls) {
-      toolCalls.push(call);
+    /*
+     * OTel GenAI message format
+     */
+    if (
+      Array.isArray(
+        messageObject.parts
+      )
+    ) {
+      for (
+        const part of
+          messageObject.parts
+      ) {
+        if (
+          !part ||
+          typeof part !== "object"
+        ) {
+          continue;
+        }
+
+        const partObject =
+          part as {
+            type?: unknown;
+          };
+
+        if (
+          partObject.type ===
+          "tool_call"
+        ) {
+          toolCalls.push(part);
+        }
+      }
     }
   }
 
   return toolCalls;
 }
 
+function extractToolInput(
+  prompt: unknown
+): unknown | undefined {
+  if (
+    !prompt ||
+    typeof prompt !== "object"
+  ) {
+    return undefined;
+  }
+
+  const input = (
+    prompt as {
+      input?: unknown;
+    }
+  ).input;
+
+  if (!Array.isArray(input)) {
+    return undefined;
+  }
+
+  if (input.length === 0) {
+    return undefined;
+  }
+
+  return input;
+}
+
+function extractToolOutput(
+  completion: unknown
+): unknown | undefined {
+  if (
+    !completion ||
+    typeof completion !== "object"
+  ) {
+    return undefined;
+  }
+
+  const messages = (
+    completion as {
+      messages?: unknown;
+    }
+  ).messages;
+
+  if (!Array.isArray(messages)) {
+    return undefined;
+  }
+
+  if (messages.length === 0) {
+    return undefined;
+  }
+
+  return messages;
+}
+
+/*
+ * --------------------------------------------------
+ * Reasoning extraction
+ * --------------------------------------------------
+ */
+
 function extractReasoningTokens(
   prompt: unknown
 ): number | undefined {
-  if (!prompt || typeof prompt !== "object") {
+  if (
+    !prompt ||
+    typeof prompt !== "object"
+  ) {
     return undefined;
   }
 
@@ -283,20 +589,23 @@ function extractReasoningTokens(
 
     if (
       !usageMetadata ||
-      typeof usageMetadata !== "object"
+      typeof usageMetadata !==
+        "object"
     ) {
       continue;
     }
 
     const outputTokenDetails = (
       usageMetadata as {
-        output_token_details?: unknown;
+        output_token_details?:
+          unknown;
       }
     ).output_token_details;
 
     if (
       !outputTokenDetails ||
-      typeof outputTokenDetails !== "object"
+      typeof outputTokenDetails !==
+        "object"
     ) {
       continue;
     }
@@ -307,7 +616,9 @@ function extractReasoningTokens(
       }
     ).reasoning;
 
-    if (typeof reasoning === "number") {
+    if (
+      typeof reasoning === "number"
+    ) {
       return reasoning;
     }
   }
@@ -315,72 +626,36 @@ function extractReasoningTokens(
   return undefined;
 }
 
-function extractToolInput(
-  prompt: unknown
-): unknown | undefined {
-  if (!prompt || typeof prompt !== "object") {
-    return undefined;
-  }
-
-  const input = (
-    prompt as {
-      input?: unknown;
-    }
-  ).input;
-
-  if (!Array.isArray(input)) {
-    return undefined;
-  }
-
-  if (input.length === 0) {
-    return undefined;
-  }
-
-  return input;
-}
-
-function extractToolOutput(
-  completion: unknown
-): unknown | undefined {
-  if (!completion || typeof completion !== "object") {
-    return undefined;
-  }
-
-  const messages = (
-    completion as {
-      messages?: unknown;
-    }
-  ).messages;
-
-  if (!Array.isArray(messages)) {
-    return undefined;
-  }
-
-  if (messages.length === 0) {
-    return undefined;
-  }
-
-  return messages;
-}
+/*
+ * --------------------------------------------------
+ * Error extraction
+ * --------------------------------------------------
+ */
 
 function extractError(
   attributes: Record<string, unknown>,
-  events?: unknown[],
+  events?: unknown[]
 ): {
   type?: string;
   message?: string;
 } | undefined {
+  /*
+   * First check normalized error attributes.
+   */
   const errorType = getString(
     attributes,
-    "error.type",
+    "error.type"
   );
 
   const errorMessage = getString(
     attributes,
-    "error.message",
+    "error.message"
   );
 
-  if (errorType || errorMessage) {
+  if (
+    errorType ||
+    errorMessage
+  ) {
     return {
       type: errorType,
       message: errorMessage,
@@ -391,6 +666,9 @@ function extractError(
     return undefined;
   }
 
+  /*
+   * Then inspect OTel exception events.
+   */
   for (const event of events) {
     if (
       !event ||
@@ -399,73 +677,101 @@ function extractError(
       continue;
     }
 
-    const eventObject = event as {
-      name?: unknown;
-      attributes?: unknown;
-    };
+    const eventObject =
+      event as {
+        name?: unknown;
+        attributes?: unknown;
+      };
 
-    if (eventObject.name !== "exception") {
+    if (
+      eventObject.name !==
+      "exception"
+    ) {
       continue;
     }
 
     if (
       !eventObject.attributes ||
-      !Array.isArray(eventObject.attributes)
+      !Array.isArray(
+        eventObject.attributes
+      )
     ) {
       continue;
     }
 
-    let exceptionType: string | undefined;
-    let exceptionMessage: string | undefined;
+    let exceptionType:
+      | string
+      | undefined;
 
-    for (const attribute of eventObject.attributes) {
+    let exceptionMessage:
+      | string
+      | undefined;
+
+    for (
+      const attribute of
+        eventObject.attributes
+    ) {
       if (
         !attribute ||
-        typeof attribute !== "object"
+        typeof attribute !==
+          "object"
       ) {
         continue;
       }
 
-      const item = attribute as {
-        key?: unknown;
-        value?: unknown;
-      };
+      const item =
+        attribute as {
+          key?: unknown;
+          value?: unknown;
+        };
 
       if (
-        typeof item.key !== "string" ||
+        typeof item.key !==
+          "string" ||
         !item.value ||
-        typeof item.value !== "object"
+        typeof item.value !==
+          "object"
       ) {
         continue;
       }
 
-      const value = item.value as {
-        stringValue?: unknown;
-      };
+      const value =
+        item.value as {
+          stringValue?: unknown;
+        };
 
       if (
-        typeof value.stringValue !== "string"
+        typeof value.stringValue !==
+          "string"
       ) {
         continue;
       }
 
       if (
-        item.key === "exception.type"
+        item.key ===
+        "exception.type"
       ) {
-        exceptionType = value.stringValue;
+        exceptionType =
+          value.stringValue;
       }
 
       if (
-        item.key === "exception.message"
+        item.key ===
+        "exception.message"
       ) {
-        exceptionMessage = value.stringValue;
+        exceptionMessage =
+          value.stringValue;
       }
     }
 
-    if (exceptionType || exceptionMessage) {
+    if (
+      exceptionType ||
+      exceptionMessage
+    ) {
       return {
         type: exceptionType,
-        message: exceptionMessage,
+        message:
+          exceptionMessage,
       };
     }
   }

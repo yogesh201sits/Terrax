@@ -50,3 +50,32 @@ def test_event_attributes_are_recorded(setup_tracing):
 
 def test_event_outside_span_does_not_fail():
     event("something.happened")
+def test_event_redacts_attributes(setup_tracing):
+    from opentelemetry import trace
+
+    from terrax import event
+
+    tracer = trace.get_tracer("test")
+
+    with tracer.start_as_current_span("agent"):
+        event(
+            "tool.called",
+            attributes={
+                "tool": "search",
+                "password": "secret123",
+            },
+            redact=["password"],
+        )
+
+    exported = setup_tracing.get_finished_spans()
+
+    assert len(exported) == 1
+
+    events = exported[0].events
+
+    assert len(events) == 1
+
+    attributes = events[0].attributes
+
+    assert attributes["tool"] == "search"
+    assert attributes["password"] == "[REDACTED]"

@@ -12,17 +12,15 @@ from .metadata import (
 )
 from .otel import get_tracer
 from .redaction import redact_data
+from .safety import safe_telemetry
 from .semantic import SpanType
 from .serialization import bind_arguments, safe_serialize
-
 
 F = TypeVar("F", bound=Callable[..., Any])
 
 
 @overload
-def observe(
-    func: F,
-) -> F:
+def observe(func: F) -> F:
     ...
 
 
@@ -36,6 +34,8 @@ def observe(
     redact: list[str] | None = None,
     max_input_size: int | None = None,
     max_output_size: int | None = None,
+    input_attribute: str | None = None,
+    output_attribute: str | None = None,
     attributes: dict[str, Any] | None = None,
 ) -> Callable[[F], F]:
     ...
@@ -51,15 +51,14 @@ def observe(
     redact: list[str] | None = None,
     max_input_size: int | None = None,
     max_output_size: int | None = None,
+    input_attribute: str | None = None,
+    output_attribute: str | None = None,
     attributes: dict[str, Any] | None = None,
 ):
     try:
         span_type = SpanType(kind)
     except ValueError:
-        valid_kinds = ", ".join(
-            item.value
-            for item in SpanType
-        )
+        valid_kinds = ", ".join(item.value for item in SpanType)
 
         raise ValueError(
             f"Invalid span kind: {kind!r}. "
@@ -70,25 +69,101 @@ def observe(
         span_name = name or fn.__name__
 
         def configure_span(span: Any) -> None:
-            set_common_metadata(span)
-
-            span.set_attribute(
-                "terrax.span.type",
-                span_type.value,
+            # Common Terrax metadata
+            safe_telemetry(
+                lambda: set_common_metadata(span)
             )
 
-            set_function_metadata(
-                span,
-                function_name=fn.__name__,
-                module_name=fn.__module__,
+            safe_telemetry(
+                lambda: span.set_attribute(
+                    "terrax.span.type",
+                    span_type.value,
+                )
             )
 
+            safe_telemetry(
+                lambda: set_function_metadata(
+                    span,
+                    function_name=fn.__name__,
+                    module_name=fn.__module__,
+                )
+            )
+
+            # Custom attributes
             if attributes:
                 for key, value in attributes.items():
-                    span.set_attribute(
-                        key,
-                        value,
+                    safe_telemetry(
+                        lambda key=key, value=value: (
+                            span.set_attribute(key, value)
+                        )
                     )
+
+        def capture_inputs(
+            span: Any,
+            resolved_config: Any,
+            args: tuple[Any, ...],
+            kwargs: dict[str, Any],
+        ) -> None:
+            """
+            Capture the function arguments onto the current OTel span.
+            """
+
+            inputs = bind_arguments(
+                fn,
+                args,
+                kwargs,
+            )
+
+            if resolved_config.redact:
+                inputs = redact_data(
+                    inputs,
+                    resolved_config.redact,
+                )
+
+            serialized = safe_serialize(
+                inputs,
+                max_size=resolved_config.max_input_size,
+            )
+
+            safe_telemetry(
+                lambda: span.set_attribute(
+                    input_attribute or "terrax.input",
+                    serialized,
+                )
+            )
+
+        def capture_output(
+            span: Any,
+            resolved_config: Any,
+            result: Any,
+        ) -> None:
+            """
+            Capture the function return value onto the current OTel span.
+            """
+
+            output = result
+
+            if resolved_config.redact:
+                output = redact_data(
+                    output,
+                    resolved_config.redact,
+                )
+
+            serialized = safe_serialize(
+                output,
+                max_size=resolved_config.max_output_size,
+            )
+
+            safe_telemetry(
+                lambda: span.set_attribute(
+                    output_attribute or "terrax.output",
+                    serialized,
+                )
+            )
+
+        # ---------------------------------------------------------
+        # ASYNC
+        # ---------------------------------------------------------
 
         if inspect.iscoroutinefunction(fn):
 
@@ -97,7 +172,10 @@ def observe(
                 *args: Any,
                 **kwargs: Any,
             ):
-                ensure_initialized()
+                try:
+                    ensure_initialized()
+                except Exception:
+                    return await fn(*args, **kwargs)
 
                 resolved_config = resolve_config(
                     capture_input=capture_input,
@@ -109,30 +187,15 @@ def observe(
 
                 tracer = get_tracer()
 
-                with tracer.start_as_current_span(
-                    span_name
-                ) as span:
+                with tracer.start_as_current_span(span_name) as span:
                     configure_span(span)
 
                     if resolved_config.capture_input:
-                        inputs = bind_arguments(
-                            fn,
+                        capture_inputs(
+                            span,
+                            resolved_config,
                             args,
                             kwargs,
-                        )
-
-                        if resolved_config.redact:
-                            inputs = redact_data(
-                                inputs,
-                                resolved_config.redact,
-                            )
-
-                        span.set_attribute(
-                            "terrax.input",
-                            safe_serialize(
-                                inputs,
-                                max_size=resolved_config.max_input_size,
-                            ),
                         )
 
                     try:
@@ -142,41 +205,42 @@ def observe(
                         )
 
                         if resolved_config.capture_output:
-                            output = result
-
-                            if resolved_config.redact:
-                                output = redact_data(
-                                    output,
-                                    resolved_config.redact,
-                                )
-
-                            span.set_attribute(
-                                "terrax.output",
-                                safe_serialize(
-                                    output,
-                                    max_size=resolved_config.max_output_size,
-                                ),
+                            capture_output(
+                                span,
+                                resolved_config,
+                                result,
                             )
 
                         return result
 
                     except Exception as error:
-                        span.record_exception(error)
+                        safe_telemetry(
+                            lambda: span.record_exception(error)
+                        )
 
-                        span.set_status(
-                            Status(StatusCode.ERROR)
+                        safe_telemetry(
+                            lambda: span.set_status(
+                                Status(StatusCode.ERROR)
+                            )
                         )
 
                         raise
 
             return async_wrapper  # type: ignore[return-value]
 
+        # ---------------------------------------------------------
+        # SYNC
+        # ---------------------------------------------------------
+
         @wraps(fn)
         def sync_wrapper(
             *args: Any,
             **kwargs: Any,
         ):
-            ensure_initialized()
+            try:
+                ensure_initialized()
+            except Exception:
+                return fn(*args, **kwargs)
 
             resolved_config = resolve_config(
                 capture_input=capture_input,
@@ -188,30 +252,15 @@ def observe(
 
             tracer = get_tracer()
 
-            with tracer.start_as_current_span(
-                span_name
-            ) as span:
+            with tracer.start_as_current_span(span_name) as span:
                 configure_span(span)
 
                 if resolved_config.capture_input:
-                    inputs = bind_arguments(
-                        fn,
+                    capture_inputs(
+                        span,
+                        resolved_config,
                         args,
                         kwargs,
-                    )
-
-                    if resolved_config.redact:
-                        inputs = redact_data(
-                            inputs,
-                            resolved_config.redact,
-                        )
-
-                    span.set_attribute(
-                        "terrax.input",
-                        safe_serialize(
-                            inputs,
-                            max_size=resolved_config.max_input_size,
-                        ),
                     )
 
                 try:
@@ -221,29 +270,23 @@ def observe(
                     )
 
                     if resolved_config.capture_output:
-                        output = result
-
-                        if resolved_config.redact:
-                            output = redact_data(
-                                output,
-                                resolved_config.redact,
-                            )
-
-                        span.set_attribute(
-                            "terrax.output",
-                            safe_serialize(
-                                output,
-                                max_size=resolved_config.max_output_size,
-                            ),
+                        capture_output(
+                            span,
+                            resolved_config,
+                            result,
                         )
 
                     return result
 
                 except Exception as error:
-                    span.record_exception(error)
+                    safe_telemetry(
+                        lambda: span.record_exception(error)
+                    )
 
-                    span.set_status(
-                        Status(StatusCode.ERROR)
+                    safe_telemetry(
+                        lambda: span.set_status(
+                            Status(StatusCode.ERROR)
+                        )
                     )
 
                     raise

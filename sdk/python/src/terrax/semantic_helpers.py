@@ -1,7 +1,7 @@
 from typing import Any
 
 from opentelemetry import trace
-
+from opentelemetry.trace import Status, StatusCode
 
 def _current_span():
     return trace.get_current_span()
@@ -60,6 +60,11 @@ def set_usage(
             reasoning_tokens,
         )
 
+    if input_tokens is not None and output_tokens is not None:
+        span.set_attribute(
+            "gen_ai.usage.total_tokens",
+            input_tokens + output_tokens,
+        )
 
 def set_response(
     *,
@@ -103,4 +108,29 @@ def set_attribute(
     span.set_attribute(
         key,
         value,
+    )
+
+def set_operation(operation: str) -> None:
+    span = _current_span()
+
+    if not span.is_recording():
+        return
+
+    span.set_attribute(
+        "gen_ai.operation.name",
+        operation,
+    )
+def set_error(
+    message: str | None = None,
+) -> None:
+    span = _current_span()
+
+    if not span.is_recording():
+        return
+
+    span.set_status(
+        Status(
+            StatusCode.ERROR,
+            message,
+        )
     )

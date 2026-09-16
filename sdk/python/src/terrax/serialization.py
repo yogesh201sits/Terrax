@@ -56,6 +56,23 @@ def safe_serialize(
     )
 
 
+def serialize_messages(
+    messages: list[dict[str, Any]],
+    *,
+    max_size: int = DEFAULT_MAX_SIZE,
+) -> str:
+    """
+    Safely serialize GenAI messages for telemetry.
+
+    Uses the same normalization and truncation pipeline
+    as regular Terrax payload serialization.
+    """
+    return safe_serialize(
+        messages,
+        max_size=max_size,
+    )
+
+
 def _normalize(
     value: Any,
     *,

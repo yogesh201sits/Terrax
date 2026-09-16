@@ -727,3 +727,81 @@ async def test_async_observe_without_parentheses(setup_tracing):
 
     assert len(spans) == 1
     assert spans[0].name == "test_function"
+def test_observe_preserves_application_result_when_telemetry_fails(
+    monkeypatch,
+):
+    import importlib
+
+    from terrax import observe
+
+    observe_module = importlib.import_module("terrax.observe")
+
+    def broken_initialize():
+        raise RuntimeError("telemetry failed")
+
+    monkeypatch.setattr(
+        observe_module,
+        "ensure_initialized",
+        broken_initialize,
+    )
+
+    @observe()
+    def run():
+        return "success"
+
+    assert run() == "success"
+def test_observe_continues_when_input_telemetry_fails(
+    monkeypatch,
+):
+    from terrax import observe
+
+    @observe(capture_input=True)
+    def run(value):
+        return value * 2
+
+    def broken_set_attribute(*args, **kwargs):
+        raise RuntimeError("telemetry failed")
+
+    monkeypatch.setattr(
+        "opentelemetry.sdk.trace.Span.set_attribute",
+        broken_set_attribute,
+    )
+
+    assert run(5) == 10
+def test_observe_continues_when_output_telemetry_fails(
+    monkeypatch,
+):
+    from terrax import observe
+
+    @observe(capture_output=True)
+    def run():
+        return "success"
+
+    def broken_set_attribute(*args, **kwargs):
+        raise RuntimeError("telemetry failed")
+
+    monkeypatch.setattr(
+        "opentelemetry.sdk.trace.Span.set_attribute",
+        broken_set_attribute,
+    )
+
+    assert run() == "success"
+def test_observe_preserves_application_exception_when_telemetry_fails(
+    monkeypatch,
+):
+    from terrax import observe
+
+    @observe()
+    def run():
+        raise ValueError("application error")
+
+    def broken_set_attribute(*args, **kwargs):
+        raise RuntimeError("telemetry failed")
+
+    monkeypatch.setattr(
+        "opentelemetry.sdk.trace.Span.set_attribute",
+        broken_set_attribute,
+    )
+
+    with pytest.raises(ValueError, match="application error"):
+        run()
