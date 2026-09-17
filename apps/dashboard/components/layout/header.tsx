@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useProjectStore } from "@/store/project-store";
+import { Notifications } from "@/components/layout/notifications";
 
 const pageNames: Record<string, string> = {
   "/overview": "Overview",
@@ -337,7 +338,7 @@ export function Header() {
         </Button>
 
         {/* Notifications */}
-        <Button
+        {/* <Button
           variant="ghost"
           size="icon"
           className="
@@ -352,7 +353,8 @@ export function Header() {
           <span className="sr-only">
             Notifications
           </span>
-        </Button>
+        </Button> */}
+        <Notifications />
 
         {/* User */}
         <div

@@ -175,7 +175,7 @@ export function AppSidebar() {
               className="group hover:bg-muted"
               render={
                 <Link
-                  href={projectHref("/overview")}
+                  href={projectHref("/")}
                 />
               }
             >
