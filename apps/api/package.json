@@ -9,10 +9,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/backend": "^3.18.1",
     "@terrax/database": "workspace:*",
     "@terrax/otel": "workspace:*",
-    "@terrax/shared": "workspace:*",
     "@terrax/semantic": "workspace:*",
+    "@terrax/shared": "workspace:*",
     "hono": "latest"
   },
   "devDependencies": {

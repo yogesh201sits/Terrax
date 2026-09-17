@@ -4,6 +4,7 @@ import type { TraceSummary } from "@/types/traces";
 
 type TraceTableProps = {
   traces: TraceSummary[];
+  projectId: string;
 };
 
 function formatDuration(durationMs: number) {
@@ -18,7 +19,10 @@ function formatTokens(tokens: number) {
   return tokens.toLocaleString();
 }
 
-export function TraceTable({ traces }: TraceTableProps) {
+export function TraceTable({
+  traces,
+  projectId,
+}: TraceTableProps) {
   return (
     <div className="overflow-hidden rounded-lg border">
       <table className="w-full text-sm">
@@ -62,11 +66,15 @@ export function TraceTable({ traces }: TraceTableProps) {
             >
               <td className="px-4 py-3">
                 <Link
-                href={`/traces/${encodeURIComponent(trace.traceId)}`}
-                className="font-medium hover:underline"
-              >
-                {trace.name}
-              </Link>
+                  href={`/traces/${encodeURIComponent(
+                    trace.traceId,
+                  )}?projectId=${encodeURIComponent(
+                    projectId,
+                  )}`}
+                  className="font-medium hover:underline"
+                >
+                  {trace.name}
+                </Link>
 
                 <div className="mt-1 font-mono text-xs text-muted-foreground">
                   {trace.traceId.slice(0, 16)}...

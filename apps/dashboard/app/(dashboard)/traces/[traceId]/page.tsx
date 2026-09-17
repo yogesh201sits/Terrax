@@ -1,8 +1,8 @@
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
 
 import { getTrace } from "@/lib/api/traces";
 import { TraceSummary } from "@/components/traces/trace-summary";
-import { TraceTree } from "@/components/traces/trace-tree";
 import { TraceTreeSection } from "@/components/traces/TraceTreeSection";
 import { TraceExplorer } from "@/components/traces/trace-explorer";
 import { CopyTraceId } from "@/components/traces/copy-trace-id";
@@ -13,16 +13,80 @@ type Props = {
   params: Promise<{
     traceId: string;
   }>;
+  searchParams: Promise<{
+    projectId?: string;
+  }>;
 };
 
 export default async function TraceDetailPage({
   params,
+  searchParams,
 }: Props) {
   const { traceId } = await params;
+  const { projectId } = await searchParams;
 
   const decodedTraceId = decodeURIComponent(traceId);
 
-  const trace = await getTrace(decodedTraceId);
+  const { userId, getToken } = await auth();
+
+  if (!userId) {
+    return null;
+  }
+
+  const token = await getToken();
+
+  if (!token) {
+    throw new Error("Unable to get Clerk token");
+  }
+
+  const API_URL =
+    process.env.NEXT_PUBLIC_TERRAX_API_URL ??
+    "http://localhost:3000";
+
+  const projectsResponse = await fetch(
+    `${API_URL}/v1/projects`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!projectsResponse.ok) {
+    throw new Error(
+      `Failed to fetch projects: ${projectsResponse.status}`,
+    );
+  }
+
+  const {
+    projects,
+  }: {
+    projects: {
+      id: string;
+      name: string;
+    }[];
+  } = await projectsResponse.json();
+
+  /*
+   * Use the project selected in the URL.
+   * Fall back to the first project when no projectId
+   * exists yet.
+   */
+  const activeProject =
+    projects.find(
+      (project) => project.id === projectId,
+    ) ?? projects[0];
+
+  if (!activeProject) {
+    throw new Error("No project found");
+  }
+
+  const trace = await getTrace(
+    activeProject.id,
+    decodedTraceId,
+    token,
+  );
 
   const roots = trace.tree.roots;
 
@@ -40,6 +104,10 @@ export default async function TraceDetailPage({
     (node) => Boolean(node.span.errorMessage),
   );
 
+  const tracesHref = `/traces?projectId=${encodeURIComponent(
+    activeProject.id,
+  )}`;
+
   return (
     <div className="min-h-full bg-background">
       <div className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
@@ -50,7 +118,7 @@ export default async function TraceDetailPage({
 
         <div className="mb-5">
           <Link
-            href="/traces"
+            href={tracesHref}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <span className="text-sm">
@@ -68,6 +136,7 @@ export default async function TraceDetailPage({
         <section className="overflow-hidden border-b bg-card">
           <div className="px-4 py-4 lg:px-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+
               {/* Trace identity */}
               <div className="min-w-0 flex-1">
                 {/* Name + status */}
@@ -102,38 +171,42 @@ export default async function TraceDetailPage({
             {/* Metadata */}
             {(startTime !== null ||
               (startTime !== null && endTime !== null)) && (
-                <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
-                  {startTime !== null && (
-                    <>
-                      <span>Started {formatDateTime(startTime)}</span>
-                    </>
-                  )}
+              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+                {startTime !== null && (
+                  <>
+                    <span>
+                      Started {formatDateTime(startTime)}
+                    </span>
+                  </>
+                )}
 
-                  {startTime !== null && endTime !== null && (
-                    <>
-                      <span className="text-muted-foreground/40">
-                        ·
+                {startTime !== null && endTime !== null && (
+                  <>
+                    <span className="text-muted-foreground/40">
+                      ·
+                    </span>
+
+                    <span className="font-mono tabular-nums">
+                      {formatTime(startTime)}
+
+                      <span className="mx-1.5 text-muted-foreground/40">
+                        →
                       </span>
 
-                      <span className="font-mono tabular-nums">
-                        {formatTime(startTime)}
-                        <span className="mx-1.5 text-muted-foreground/40">
-                          →
-                        </span>
-                        {formatTime(endTime)}
-                      </span>
+                      {formatTime(endTime)}
+                    </span>
 
-                      <span className="text-muted-foreground/40">
-                        ·
-                      </span>
+                    <span className="text-muted-foreground/40">
+                      ·
+                    </span>
 
-                      <span className="font-mono tabular-nums">
-                        {formatDuration(durationMs)}
-                      </span>
-                    </>
-                  )}
-                </div>
-              )}
+                    <span className="font-mono tabular-nums">
+                      {formatDuration(durationMs)}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
@@ -149,32 +222,13 @@ export default async function TraceDetailPage({
         {/* Execution Tree                                                    */}
         {/* ================================================================ */}
 
-        {/* <section className="mt-8">
-
-          <div className="mb-4">
-            <h2 className="text-base font-semibold tracking-tight">
-              Execution
-            </h2>
-
-            <p className="mt-1 text-xs text-muted-foreground">
-              Explore the execution hierarchy of this trace.
-            </p>
-          </div>
-
-          <div className="overflow-hidden rounded-xl border bg-card">
-            <TraceTree roots={roots} />
-          </div>
-
-        </section> */}
         <TraceTreeSection roots={roots} />
-
 
         {/* ================================================================ */}
         {/* Timeline / Graph                                                  */}
         {/* ================================================================ */}
 
         <section className="mt-8">
-
           <div className="mb-4">
             <h2 className="text-base font-semibold tracking-tight">
               Visualization
@@ -186,9 +240,7 @@ export default async function TraceDetailPage({
           </div>
 
           <TraceExplorer roots={roots} />
-
         </section>
-
       </div>
     </div>
   );
@@ -238,7 +290,6 @@ function StatPill({
 }) {
   return (
     <div className="flex items-center gap-2 rounded-md border bg-muted/20 px-2.5 py-1.5">
-
       <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
@@ -246,7 +297,6 @@ function StatPill({
       <span className="text-xs font-semibold tabular-nums">
         {value}
       </span>
-
     </div>
   );
 }

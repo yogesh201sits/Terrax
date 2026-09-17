@@ -8,11 +8,7 @@ import type { AppVariables } from "../types";
 export const authMiddleware = createMiddleware<{
   Variables: AppVariables;
 }>(async (c, next) => {
-  console.log("[AUTH] Middleware started");
-
   const authorization = c.req.header("Authorization");
-
-  console.log("[AUTH] Authorization header:", authorization);
 
   if (!authorization) {
     return c.json(
@@ -34,9 +30,6 @@ export const authMiddleware = createMiddleware<{
 
   const apiKey = authorization.slice("Bearer ".length).trim();
 
-  console.log("[AUTH] API key received:", apiKey);
-  console.log("[AUTH] API key length:", apiKey.length);
-
   if (!apiKey) {
     return c.json(
       {
@@ -46,12 +39,9 @@ export const authMiddleware = createMiddleware<{
     );
   }
 
-  // Hash the API key before database lookup
   const keyHash = createHash("sha256")
     .update(apiKey)
     .digest("hex");
-
-  console.log("[AUTH] Generated key hash:", keyHash);
 
   const apiKeyRecord = await prisma.apiKey.findUnique({
     where: {
@@ -59,14 +49,11 @@ export const authMiddleware = createMiddleware<{
     },
     select: {
       projectId: true,
+      revokedAt: true,
     },
   });
 
-  console.log("[AUTH] Database result:", apiKeyRecord);
-
   if (!apiKeyRecord) {
-    console.log("[AUTH] API key NOT FOUND in database");
-
     return c.json(
       {
         error: "Invalid API key",
@@ -75,14 +62,25 @@ export const authMiddleware = createMiddleware<{
     );
   }
 
-  console.log("[AUTH] API key valid");
-  console.log("[AUTH] projectId:", apiKeyRecord.projectId);
+  if (apiKeyRecord.revokedAt) {
+    return c.json(
+      {
+        error: "API key has been revoked",
+      },
+      401,
+    );
+  }
 
   c.set("projectId", apiKeyRecord.projectId);
 
-  console.log("[AUTH] projectId stored in context");
+  await prisma.apiKey.update({
+    where: {
+      keyHash,
+    },
+    data: {
+      lastUsedAt: new Date(),
+    },
+  });
 
   await next();
-
-  console.log("[AUTH] Middleware completed");
 });
