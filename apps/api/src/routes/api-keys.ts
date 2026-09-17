@@ -1,15 +1,24 @@
-import { randomBytes, createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 import { prisma } from "@terrax/database";
 import { Hono } from "hono";
 
 import { clerkAuthMiddleware } from "../middleware/clerk-auth";
+import {
+  createNotification,
+} from "../services/notifications/notification-service";
+import {
+  NotificationType,
+} from "../services/notifications/types";
 import type { AppVariables } from "../types";
 
 const apiKeys = new Hono<{
   Variables: AppVariables;
 }>();
 
+/**
+ * Create API key
+ */
 apiKeys.post(
   "/projects/:projectId/api-keys",
   clerkAuthMiddleware,
@@ -75,6 +84,18 @@ apiKeys.post(
       },
     });
 
+    await createNotification({
+      userId,
+      projectId,
+      type: NotificationType.API_KEY_CREATED,
+      title: "API key created",
+      message: `API key "${record.name}" was created.`,
+      metadata: {
+        apiKeyId: record.id,
+        keyPrefix: record.keyPrefix,
+      },
+    });
+
     return c.json(
       {
         apiKey,
@@ -85,6 +106,9 @@ apiKeys.post(
   },
 );
 
+/**
+ * Get project API keys
+ */
 apiKeys.get(
   "/projects/:projectId/api-keys",
   clerkAuthMiddleware,
@@ -134,6 +158,9 @@ apiKeys.get(
   },
 );
 
+/**
+ * Revoke API key
+ */
 apiKeys.delete(
   "/projects/:projectId/api-keys/:keyId",
   clerkAuthMiddleware,
@@ -152,6 +179,8 @@ apiKeys.delete(
       },
       select: {
         id: true,
+        name: true,
+        keyPrefix: true,
         revokedAt: true,
       },
     });
@@ -180,6 +209,18 @@ apiKeys.delete(
       },
       data: {
         revokedAt: new Date(),
+      },
+    });
+
+    await createNotification({
+      userId,
+      projectId,
+      type: NotificationType.API_KEY_REVOKED,
+      title: "API key revoked",
+      message: `API key "${apiKey.name}" was revoked.`,
+      metadata: {
+        apiKeyId: apiKey.id,
+        keyPrefix: apiKey.keyPrefix,
       },
     });
 
