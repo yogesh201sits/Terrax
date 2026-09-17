@@ -75,16 +75,14 @@ function isNotificationRead(notification: Notification) {
 }
 
 function getNotificationHref(notification: Notification) {
-  if (!notification.projectId) {
-    return null;
-  }
-
   switch (notification.type) {
     case "api_key.created":
     case "api_key.revoked":
       return "/api-keys";
 
     case "project.created":
+    case "project.updated":
+    case "project.deleted":
       return "/projects";
 
     default:

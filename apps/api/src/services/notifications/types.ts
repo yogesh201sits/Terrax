@@ -7,6 +7,8 @@ export const NotificationType = {
   INGESTION_ERROR: "ingestion.error",
 
   SYSTEM_ERROR: "system.error",
+  PROJECT_UPDATED: "project.updated",
+  PROJECT_DELETED: "project.deleted",
 } as const;
 
 export type NotificationType =
@@ -16,6 +18,8 @@ export const NotificationChannel = {
   IN_APP: "in_app",
   EMAIL: "email",
 } as const;
+
+
 
 export type NotificationChannel =
   (typeof NotificationChannel)[keyof typeof NotificationChannel];
