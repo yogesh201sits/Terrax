@@ -130,8 +130,8 @@ export function AppSidebar() {
   const projectHref = (path: string) =>
     activeProject
       ? `${path}?projectId=${encodeURIComponent(
-          activeProject.id,
-        )}`
+        activeProject.id,
+      )}`
       : path;
 
   function handleProjectSelect(projectId: string) {
@@ -145,15 +145,14 @@ export function AppSidebar() {
 
     setActiveProject(project);
 
-    const params = new URLSearchParams(
-      searchParams.toString(),
+    router.push(
+      `/overview?projectId=${encodeURIComponent(
+        project.id,
+      )}`,
+      {
+        scroll: false,
+      },
     );
-
-    params.set("projectId", project.id);
-
-    router.push(`${pathname}?${params.toString()}`, {
-      scroll: false,
-    });
   }
 
   return (
@@ -247,14 +246,13 @@ export function AppSidebar() {
                           transition-all
                           duration-200
 
-                          ${
-                            isActive
-                              ? `
+                          ${isActive
+                            ? `
                                 bg-[#e8e8e8]
                                 text-[#222222]
                                 shadow-[inset_4px_4px_7px_#c5c5c5,inset_-4px_-4px_7px_#ffffff]
                               `
-                              : `
+                            : `
                                 text-[#555555]
                                 hover:bg-[#e8e8e8]
                                 hover:text-[#222222]
@@ -277,13 +275,12 @@ export function AppSidebar() {
                             transition-all
                             duration-200
 
-                            ${
-                              isActive
-                                ? `
+                            ${isActive
+                              ? `
                                   text-[#222222]
                                   drop-shadow-none
                                 `
-                                : `
+                              : `
                                   text-[#666666]
                                   drop-shadow-[1px_1px_1px_#bdbdbd]
                                   group-hover:text-[#222222]
@@ -427,8 +424,8 @@ export function AppSidebar() {
 
                   {project.id ===
                     activeProject.id && (
-                    <Check className="size-4 shrink-0 text-[#333333]" />
-                  )}
+                      <Check className="size-4 shrink-0 text-[#333333]" />
+                    )}
                 </DropdownMenuItem>
               ))}
 
