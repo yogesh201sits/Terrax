@@ -22,35 +22,54 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Badge } from "@/components/ui/badge";
 
+import { useProjectStore } from "@/store/project-store";
+
 const pageNames: Record<string, string> = {
   "/overview": "Overview",
   "/traces": "Traces",
   "/projects": "Projects",
   "/settings": "Settings",
+  "/graph": "Graph Explorer",
+  "/agents": "Agents",
+  "/llms": "LLMs",
+  "/tools": "Tools",
+  "/api-keys": "API Keys",
+  "/sdk": "SDK",
 };
 
 export function Header() {
   const pathname = usePathname();
 
+  const activeProject = useProjectStore(
+    (state) => state.activeProject,
+  );
+
+  const projectHref = (path: string) =>
+    activeProject
+      ? `${path}?projectId=${encodeURIComponent(
+          activeProject.id,
+        )}`
+      : path;
+
   const pageName = pageNames[pathname] ?? "Dashboard";
 
   return (
     <header
-  className="
-    sticky
-    top-0
-    z-50
-    flex
-    h-14
-    shrink-0
-    items-center
-    justify-between
-    border-b
-    border-[#d8d8d8]
-    bg-[#e8e8e8]
-    shadow-[0_3px_10px_#cfcfcf]
-  "
->
+      className="
+        sticky
+        top-0
+        z-50
+        flex
+        h-14
+        shrink-0
+        items-center
+        justify-between
+        border-b
+        border-[#d8d8d8]
+        bg-[#e8e8e8]
+        shadow-[0_3px_10px_#cfcfcf]
+      "
+    >
       {/* Left */}
       <div className="flex items-center gap-2 px-4">
         <SidebarTrigger
@@ -77,7 +96,9 @@ export function Header() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink
-                render={<Link href="/overview" />}
+                render={
+                  <Link href={projectHref("/overview")} />
+                }
                 className="
                   font-medium
                   text-[#666666]

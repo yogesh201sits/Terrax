@@ -1,8 +1,47 @@
+import { auth } from "@clerk/nextjs/server";
+
+import { getProjects } from "@/lib/api/projects";
 import { getTraces } from "@/lib/api/traces";
 import { TraceTable } from "@/components/traces/trace-table";
 
-export default async function TracesPage() {
-  const { traces } = await getTraces();
+type Props = {
+  searchParams: Promise<{
+    projectId?: string;
+  }>;
+};
+
+export default async function TracesPage({
+  searchParams,
+}: Props) {
+  const { projectId } = await searchParams;
+
+  const { userId, getToken } = await auth();
+
+  if (!userId) {
+    return null;
+  }
+
+  const token = await getToken();
+
+  if (!token) {
+    throw new Error("Unable to get Clerk token");
+  }
+
+  const { projects } = await getProjects(token);
+
+  const activeProject =
+    projects.find(
+      (project) => project.id === projectId,
+    ) ?? projects[0];
+
+  if (!activeProject) {
+    throw new Error("No project found");
+  }
+
+  const { traces } = await getTraces(
+    activeProject.id,
+    token,
+  );
 
   return (
     <div className="p-6">
@@ -24,7 +63,10 @@ export default async function TracesPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          <TraceTable traces={traces} />
+          <TraceTable
+            traces={traces}
+            projectId={activeProject.id}
+          />
         </div>
       )}
     </div>

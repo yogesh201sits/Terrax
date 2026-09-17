@@ -5,16 +5,19 @@ const API_URL =
   process.env.NEXT_PUBLIC_TERRAX_API_URL ??
   "http://localhost:3000";
 
-const API_KEY = "terrax_test_key";
-
-export async function getTraces(): Promise<TracesResponse> {
-  const response = await fetch(`${API_URL}/v1/traces`, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
+export async function getTraces(
+  projectId: string,
+  token: string,
+): Promise<TracesResponse> {
+  const response = await fetch(
+    `${API_URL}/v1/projects/${projectId}/traces`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
     },
-    cache: "no-store",
-  });
+  );
 
   if (!response.ok) {
     const body = await response.text();
@@ -28,19 +31,22 @@ export async function getTraces(): Promise<TracesResponse> {
 }
 
 export async function getTrace(
+  projectId: string,
   traceId: string,
+  token: string,
 ): Promise<TraceDetail> {
-  // Normalize dynamic route encoding before building the API path.
   const normalizedTraceId = decodeURIComponent(traceId).replace(
     / /g,
     "+",
   );
+
   const response = await fetch(
-    `${API_URL}/v1/traces/${encodeURIComponent(normalizedTraceId)}`,
+    `${API_URL}/v1/projects/${projectId}/traces/${encodeURIComponent(
+      normalizedTraceId,
+    )}`,
     {
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`,
+        Authorization: `Bearer ${token}`,
       },
       cache: "no-store",
     },
