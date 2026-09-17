@@ -1,27 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import {
-  Bell,
-  Search,
   Activity,
+  Bell,
+  Check,
+  ChevronDown,
+  Search,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Badge } from "@/components/ui/badge";
-
 import { useProjectStore } from "@/store/project-store";
 
 const pageNames: Record<string, string> = {
@@ -39,10 +34,24 @@ const pageNames: Record<string, string> = {
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const [projectMenuOpen, setProjectMenuOpen] =
+    useState(false);
+
+  const projects = useProjectStore(
+    (state) => state.projects,
+  );
 
   const activeProject = useProjectStore(
     (state) => state.activeProject,
   );
+
+  const setActiveProject = useProjectStore(
+    (state) => state.setActiveProject,
+  );
+
+  const pageName = pageNames[pathname] ?? "Dashboard";
 
   const projectHref = (path: string) =>
     activeProject
@@ -51,7 +60,27 @@ export function Header() {
         )}`
       : path;
 
-  const pageName = pageNames[pathname] ?? "Dashboard";
+  function handleProjectSelect(projectId: string) {
+    const project = projects.find(
+      (item) => item.id === projectId,
+    );
+
+    if (!project) {
+      return;
+    }
+
+    setActiveProject(project);
+    setProjectMenuOpen(false);
+
+    router.push(
+      `/overview?projectId=${encodeURIComponent(
+        project.id,
+      )}`,
+      {
+        scroll: false,
+      },
+    );
+  }
 
   return (
     <header
@@ -71,19 +100,14 @@ export function Header() {
       "
     >
       {/* Left */}
-      <div className="flex items-center gap-2 px-4">
+      <div className="flex min-w-0 items-center gap-2 px-4">
         <SidebarTrigger
           className="
             size-8
             rounded-lg
             text-[#555555]
-            shadow-[3px_3px_6px_#c7c7c7,-3px_-3px_6px_#ffffff]
-            transition-all
-            duration-200
-            hover:bg-[#e8e8e8]
+            hover:bg-[#dedede]
             hover:text-[#222222]
-            hover:shadow-[4px_4px_8px_#c5c5c5,-4px_-4px_8px_#ffffff]
-            active:shadow-[inset_2px_2px_4px_#c5c5c5,inset_-2px_-2px_4px_#ffffff]
           "
         />
 
@@ -92,9 +116,9 @@ export function Header() {
           className="mx-1 h-5 bg-[#d0d0d0]"
         />
 
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
+        <Breadcrumb className="min-w-0">
+          <BreadcrumbList className="flex-nowrap">
+            <BreadcrumbItem className="shrink-0">
               <BreadcrumbLink
                 render={
                   <Link href={projectHref("/overview")} />
@@ -112,8 +136,14 @@ export function Header() {
 
             <BreadcrumbSeparator className="text-[#999999]" />
 
-            <BreadcrumbItem>
-              <BreadcrumbPage className="font-semibold text-[#292929]">
+            <BreadcrumbItem className="min-w-0">
+              <BreadcrumbPage
+                className="
+                  truncate
+                  font-semibold
+                  text-[#292929]
+                "
+              >
                 {pageName}
               </BreadcrumbPage>
             </BreadcrumbItem>
@@ -122,58 +152,172 @@ export function Header() {
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-3 px-4">
+      <div className="flex shrink-0 items-center gap-3 px-4">
+        {/* Project selector */}
+        <div className="relative">
+          <button
+            type="button"
+            disabled={projects.length === 0}
+            onClick={() =>
+              setProjectMenuOpen((open) => !open)
+            }
+            className="
+              flex
+              h-8
+              items-center
+              gap-2
+              rounded-lg
+              bg-[#e8e8e8]
+              px-3
+              text-xs
+              font-medium
+              text-[#444444]
+              shadow-[2px_2px_5px_#c7c7c7,-2px_-2px_5px_#ffffff]
+              transition-all
+              hover:text-[#222222]
+              active:shadow-[inset_2px_2px_4px_#c7c7c7,inset_-2px_-2px_4px_#ffffff]
+              disabled:cursor-not-allowed
+              disabled:opacity-50
+            "
+          >
+            <span className="size-1.5 rounded-full bg-[#555555]" />
+
+            <span className="max-w-32 truncate">
+              {activeProject?.name ?? "Select project"}
+            </span>
+
+            <ChevronDown
+              className={`
+                size-3
+                text-[#777777]
+                transition-transform
+                ${projectMenuOpen ? "rotate-180" : ""}
+              `}
+            />
+          </button>
+
+          {/* Project dropdown */}
+          {projectMenuOpen && projects.length > 0 && (
+            <div
+              className="
+                absolute
+                right-0
+                top-[calc(100%+8px)]
+                z-[100]
+                w-56
+                overflow-hidden
+                rounded-xl
+                border
+                border-[#d0d0d0]
+                bg-[#e8e8e8]
+                p-1.5
+                shadow-[6px_6px_14px_#c7c7c7,-4px_-4px_10px_#ffffff]
+              "
+            >
+              <div className="px-2.5 py-2">
+                <p
+                  className="
+                    text-[10px]
+                    font-medium
+                    uppercase
+                    tracking-wider
+                    text-[#888888]
+                  "
+                >
+                  Projects
+                </p>
+              </div>
+
+              <div className="max-h-64 overflow-y-auto">
+                {projects.map((project) => {
+                  const isActive =
+                    project.id === activeProject?.id;
+
+                  return (
+                    <button
+                      key={project.id}
+                      type="button"
+                      onClick={() =>
+                        handleProjectSelect(project.id)
+                      }
+                      className="
+                        flex
+                        w-full
+                        items-center
+                        justify-between
+                        rounded-lg
+                        px-2.5
+                        py-2
+                        text-left
+                        text-xs
+                        text-[#444444]
+                        transition-colors
+                        hover:bg-[#dedede]
+                      "
+                    >
+                      <span className="min-w-0 truncate">
+                        {project.name}
+                      </span>
+
+                      {isActive && (
+                        <Check
+                          className="
+                            ml-2
+                            size-3.5
+                            shrink-0
+                            text-[#333333]
+                          "
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* System status */}
         <div
           className="
-            hidden
+            flex
+            h-8
             items-center
             gap-2
-            rounded-xl
+            rounded-lg
             bg-[#e8e8e8]
             px-3
-            py-1.5
-            text-xs
-            shadow-[inset_2px_2px_5px_#c7c7c7,inset_-2px_-2px_5px_#ffffff]
-            md:flex
+            shadow-[2px_2px_5px_#c7c7c7,-2px_-2px_5px_#ffffff]
           "
         >
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
-          </span>
+          <span className="size-1.5 rounded-full bg-[#33df10]" />
 
-          <span className="text-[#666666]">
+          <span className="text-xs font-medium text-[#555555]">
             All systems operational
           </span>
         </div>
 
         {/* Environment */}
-        <Badge
-          variant="secondary"
+        {/* <Badge
+          variant="outline"
           className="
-            hidden
-            gap-1.5
-            rounded-lg
-            border-0
+            h-7
+            rounded-md
+            border-[#cfcfcf]
             bg-[#e8e8e8]
-            px-3
-            py-1.5
+            px-2.5
+            text-[11px]
+            font-medium
             text-[#555555]
-            shadow-[3px_3px_6px_#c7c7c7,-3px_-3px_6px_#ffffff]
-            transition-all
-            duration-200
-            hover:shadow-[4px_4px_8px_#c5c5c5,-4px_-4px_8px_#ffffff]
-            sm:flex
+            shadow-[1px_1px_3px_#c7c7c7,-1px_-1px_3px_#ffffff]
           "
         >
-          <Activity className="h-3 w-3 drop-shadow-[1px_1px_1px_#c0c0c0]" />
           Production
-        </Badge>
+        </Badge> */}
 
         <Separator
           orientation="vertical"
-          className="mx-1 h-5 bg-[#d0d0d0]"
+          className="h-5 bg-[#d0d0d0]"
         />
 
         {/* Search */}
@@ -183,19 +327,13 @@ export function Header() {
           className="
             size-8
             rounded-lg
-            bg-[#e8e8e8]
             text-[#666666]
-            shadow-[3px_3px_6px_#c7c7c7,-3px_-3px_6px_#ffffff]
-            transition-all
-            duration-200
-            hover:bg-[#e8e8e8]
+            hover:bg-[#dedede]
             hover:text-[#222222]
-            hover:shadow-[4px_4px_8px_#c5c5c5,-4px_-4px_8px_#ffffff]
-            active:shadow-[inset_2px_2px_4px_#c5c5c5,inset_-2px_-2px_4px_#ffffff]
           "
-          aria-label="Search"
         >
-          <Search className="h-4 w-4 drop-shadow-[1px_1px_1px_#c0c0c0]" />
+          <Search className="size-4" />
+          <span className="sr-only">Search</span>
         </Button>
 
         {/* Notifications */}
@@ -203,34 +341,17 @@ export function Header() {
           variant="ghost"
           size="icon"
           className="
-            relative
             size-8
             rounded-lg
-            bg-[#e8e8e8]
             text-[#666666]
-            shadow-[3px_3px_6px_#c7c7c7,-3px_-3px_6px_#ffffff]
-            transition-all
-            duration-200
-            hover:bg-[#e8e8e8]
+            hover:bg-[#dedede]
             hover:text-[#222222]
-            hover:shadow-[4px_4px_8px_#c5c5c5,-4px_-4px_8px_#ffffff]
-            active:shadow-[inset_2px_2px_4px_#c5c5c5,inset_-2px_-2px_4px_#ffffff]
           "
-          aria-label="Notifications"
         >
-          <Bell className="h-4 w-4 drop-shadow-[1px_1px_1px_#c0c0c0]" />
-
-          <span
-            className="
-              absolute
-              right-1.5
-              top-1.5
-              size-1.5
-              rounded-full
-              bg-red-500
-              shadow-[0_0_5px_rgba(239,68,68,0.6)]
-            "
-          />
+          <Bell className="size-4" />
+          <span className="sr-only">
+            Notifications
+          </span>
         </Button>
 
         {/* User */}

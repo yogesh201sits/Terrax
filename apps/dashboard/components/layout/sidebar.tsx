@@ -13,6 +13,7 @@ import {
   ChartNetwork,
   Check,
   Code2,
+  FolderKanban,
   KeyRound,
   LayoutDashboard,
   Settings,
@@ -90,6 +91,11 @@ const navigation = [
         title: "API Keys",
         href: "/api-keys",
         icon: KeyRound,
+      },
+      {
+        title: "Projects",
+        href: "/projects",
+        icon: FolderKanban,
       },
       {
         title: "SDK",
