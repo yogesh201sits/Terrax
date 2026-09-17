@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { UserButton } from "@clerk/nextjs";
 import {
   Bell,
   Search,
   Activity,
-  ChevronDown,
 } from "lucide-react";
 
 import { Separator } from "@/components/ui/separator";
@@ -234,43 +234,27 @@ export function Header() {
         </Button>
 
         {/* User */}
-        <Button
-          variant="ghost"
+        <div
           className="
             flex
-            h-9
+            size-9
             items-center
-            gap-2
+            justify-center
             rounded-xl
             bg-[#e8e8e8]
-            px-2
             shadow-[3px_3px_6px_#c7c7c7,-3px_-3px_6px_#ffffff]
-            transition-all
-            duration-200
-            hover:bg-[#e8e8e8]
-            hover:shadow-[4px_4px_8px_#c5c5c5,-4px_-4px_8px_#ffffff]
-            active:shadow-[inset_2px_2px_4px_#c5c5c5,inset_-2px_-2px_4px_#ffffff]
           "
         >
-          <div
-            className="
-              flex
-              size-6
-              items-center
-              justify-center
-              rounded-full
-              bg-[#e8e8e8]
-              text-[10px]
-              font-semibold
-              text-[#555555]
-              shadow-[inset_2px_2px_4px_#c7c7c7,inset_-2px_-2px_4px_#ffffff]
-            "
-          >
-            YJ
-          </div>
-
-          <ChevronDown className="hidden h-3.5 w-3.5 text-[#777777] sm:block" />
-        </Button>
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: "size-7",
+                userButtonTrigger:
+                  "rounded-full focus:shadow-none",
+              },
+            }}
+          />
+        </div>
       </div>
     </header>
   );

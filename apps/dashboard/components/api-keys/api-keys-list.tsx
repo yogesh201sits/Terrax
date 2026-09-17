@@ -3,6 +3,31 @@
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+import { Copy, KeyRound, Plus, Trash2 } from "lucide-react";
 
 const API_URL =
   process.env.NEXT_PUBLIC_TERRAX_API_URL ??
@@ -19,18 +44,24 @@ type ApiKey = {
 
 type ApiKeysListProps = {
   projectId: string;
+  projectName: string;
 };
 
 export function ApiKeysList({
   projectId,
+  projectName,
 }: ApiKeysListProps) {
   const { getToken } = useAuth();
 
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [revoking, setRevoking] = useState(false);
   const [name, setName] = useState("");
-  const [newApiKey, setNewApiKey] = useState<string | null>(
+  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const [selectedKeyId, setSelectedKeyId] = useState<string | null>(
     null,
   );
 
@@ -46,6 +77,8 @@ export function ApiKeysList({
 
   async function loadKeys() {
     try {
+      setLoading(true);
+
       const token = await getAuthToken();
 
       const response = await fetch(
@@ -133,17 +166,12 @@ export function ApiKeysList({
 
       const data = await response.json();
 
-      /*
-       * The raw key is returned only at creation time.
-       * Store it locally so the user can copy it.
-       */
       setNewApiKey(data.apiKey);
       setName("");
 
       toast.add({
         title: "API key created",
-        description:
-          "Copy your API key now. It will not be shown again.",
+        description: `API key created for ${projectName}. Copy it now. It will not be shown again.`,
         type: "success",
       });
 
@@ -164,20 +192,23 @@ export function ApiKeysList({
     }
   }
 
-  async function revokeKey(keyId: string) {
-    const confirmed = window.confirm(
-      "Revoke this API key? Applications using it will no longer be able to send telemetry.",
-    );
+  function openRevokeDialog(keyId: string) {
+    setSelectedKeyId(keyId);
+    setRevokeDialogOpen(true);
+  }
 
-    if (!confirmed) {
+  async function revokeKey() {
+    if (!selectedKeyId) {
       return;
     }
+
+    setRevoking(true);
 
     try {
       const token = await getAuthToken();
 
       const response = await fetch(
-        `${API_URL}/v1/projects/${projectId}/api-keys/${keyId}`,
+        `${API_URL}/v1/projects/${projectId}/api-keys/${selectedKeyId}`,
         {
           method: "DELETE",
           headers: {
@@ -196,7 +227,7 @@ export function ApiKeysList({
 
       setKeys((current) =>
         current.map((key) =>
-          key.id === keyId
+          key.id === selectedKeyId
             ? {
                 ...key,
                 revokedAt: new Date().toISOString(),
@@ -204,6 +235,9 @@ export function ApiKeysList({
             : key,
         ),
       );
+
+      setRevokeDialogOpen(false);
+      setSelectedKeyId(null);
 
       toast.add({
         title: "API key revoked",
@@ -222,6 +256,8 @@ export function ApiKeysList({
             : "Something went wrong while revoking the API key.",
         type: "error",
       });
+    } finally {
+      setRevoking(false);
     }
   }
 
@@ -250,131 +286,236 @@ export function ApiKeysList({
 
   return (
     <div className="space-y-6">
-      {/* Create key */}
-      <form
-        onSubmit={createKey}
-        className="rounded-lg border bg-card"
-      >
-        <div className="border-b px-5 py-4">
-          <h2 className="text-sm font-semibold">
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-2">
+          <KeyRound className="size-5 text-muted-foreground" />
+
+          <h1 className="text-xl font-semibold tracking-tight">
+            API Keys
+          </h1>
+
+          <Badge variant="secondary">
+            {projectName}
+          </Badge>
+        </div>
+
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage API keys used to send telemetry to this project.
+        </p>
+      </div>
+
+      {/* Create API key */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">
             Create API key
-          </h2>
+          </CardTitle>
 
-          <p className="mt-1 text-xs text-muted-foreground">
-            Use this key to send OpenTelemetry telemetry to Terrax.
+          <p className="text-xs text-muted-foreground">
+            Generate a key for an application or environment.
           </p>
-        </div>
+        </CardHeader>
 
-        <div className="flex flex-col gap-3 p-5 sm:flex-row">
-          <input
-            value={name}
-            onChange={(event) =>
-              setName(event.target.value)
-            }
-            placeholder="Development"
-            disabled={creating}
-            className="h-9 flex-1 rounded-md border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
-          />
-
-          <button
-            type="submit"
-            disabled={creating}
-            className="h-9 rounded-md bg-foreground px-4 text-xs font-medium text-background disabled:cursor-not-allowed disabled:opacity-50"
+        <CardContent>
+          <form
+            onSubmit={createKey}
+            className="flex flex-col gap-3 sm:flex-row"
           >
-            {creating
-              ? "Creating..."
-              : "Create API key"}
-          </button>
-        </div>
-      </form>
+            <Input
+              value={name}
+              onChange={(event) =>
+                setName(event.target.value)
+              }
+              placeholder="e.g. Production"
+              disabled={creating}
+              className="sm:max-w-md"
+            />
+
+            <Button
+              type="submit"
+              disabled={creating}
+            >
+              <Plus className="size-4" />
+
+              {creating
+                ? "Creating..."
+                : "Create API key"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Newly created key */}
       {newApiKey && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-5">
-          <p className="text-sm font-medium">
-            API key created
-          </p>
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardHeader>
+            <CardTitle className="text-sm">
+              API key created
+            </CardTitle>
 
-          <p className="mt-1 text-xs text-muted-foreground">
-            Copy this key now. It will not be shown again.
-          </p>
+            <p className="text-xs text-muted-foreground">
+              Copy this key now. It will not be shown again.
+            </p>
+          </CardHeader>
 
-          <div className="mt-4 flex gap-2">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded-md border bg-background px-3 py-2 font-mono text-xs">
-              {newApiKey}
-            </code>
+          <CardContent>
+            <div className="flex gap-2">
+              <code className="min-w-0 flex-1 overflow-x-auto rounded-md border bg-background px-3 py-2 font-mono text-xs">
+                {newApiKey}
+              </code>
 
-            <button
-              type="button"
-              onClick={copyKey}
-              className="rounded-md border px-3 text-xs font-medium hover:bg-muted"
-            >
-              Copy
-            </button>
-          </div>
-        </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={copyKey}
+              >
+                <Copy className="size-4" />
+                Copy
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Existing keys */}
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <div className="border-b px-5 py-4">
-          <h2 className="text-sm font-semibold">
-            API keys
-          </h2>
-        </div>
+      {/* Existing API keys */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">
+              API keys
+            </CardTitle>
+
+            <Badge variant="outline">
+              {keys.length} {keys.length === 1 ? "key" : "keys"}
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <Separator />
 
         {loading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            Loading API keys...
+          <div className="space-y-4 p-6">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
         ) : keys.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            No API keys yet.
+          <div className="p-10 text-center">
+            <KeyRound className="mx-auto size-8 text-muted-foreground" />
+
+            <p className="mt-3 text-sm font-medium">
+              No API keys yet
+            </p>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              Create an API key to start sending telemetry.
+            </p>
           </div>
         ) : (
-          <div className="divide-y">
-            {keys.map((key) => (
-              <div
-                key={key.id}
-                className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">
-                    {key.name}
-                  </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Key</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">
+                    Action
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
 
-                  <div className="mt-1 font-mono text-xs text-muted-foreground">
-                    {key.keyPrefix}••••••••
-                  </div>
+              <TableBody>
+                {keys.map((key) => (
+                  <TableRow key={key.id}>
+                    <TableCell className="font-medium">
+                      {key.name}
+                    </TableCell>
 
-                  <div className="mt-1 text-[10px] text-muted-foreground">
-                    Created{" "}
-                    {new Date(
-                      key.createdAt,
-                    ).toLocaleString()}
-                  </div>
-                </div>
+                    <TableCell>
+                      <code className="rounded bg-muted px-2 py-1 font-mono text-xs">
+                        {key.keyPrefix}••••••••
+                      </code>
+                    </TableCell>
 
-                {key.revokedAt ? (
-                  <span className="text-xs text-destructive">
-                    Revoked
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      revokeKey(key.id)
-                    }
-                    className="text-xs text-destructive hover:underline"
-                  >
-                    Revoke
-                  </button>
-                )}
-              </div>
-            ))}
+                    <TableCell>
+                      {key.revokedAt ? (
+                        <Badge variant="destructive">
+                          Revoked
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          Active
+                        </Badge>
+                      )}
+                    </TableCell>
+
+                    <TableCell className="text-xs text-muted-foreground">
+                      {new Date(
+                        key.createdAt,
+                      ).toLocaleDateString()}
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      {!key.revokedAt && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() =>
+                            openRevokeDialog(key.id)
+                          }
+                        >
+                          <Trash2 className="size-4" />
+                          Revoke
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
-      </div>
+      </Card>
+
+      {/* Revoke confirmation */}
+      <AlertDialog
+        open={revokeDialogOpen}
+        onOpenChange={setRevokeDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Revoke API key?
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              This action cannot be undone. Applications using
+              this API key will no longer be able to send
+              telemetry to Terrax.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={revoking}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={revokeKey}
+              disabled={revoking}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {revoking ? "Revoking..." : "Revoke API key"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

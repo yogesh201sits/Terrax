@@ -1,15 +1,37 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import {
+  ArrowUpRight,
+  CalendarDays,
+  Copy,
+  FolderKanban,
+  Trash2,
+} from "lucide-react";
 
-import type { Project } from "@/lib/api/projects";
-import { useProjectStore } from "@/store/project-store";
+import { toast } from "@/components/ui/toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const API_URL =
   process.env.NEXT_PUBLIC_TERRAX_API_URL ??
   "http://localhost:3000";
+
+type Project = {
+  id: string;
+  name: string;
+  createdAt: string;
+};
 
 type ProjectsListProps = {
   projects: Project[];
@@ -21,57 +43,28 @@ export function ProjectsList({
   const { getToken } = useAuth();
   const router = useRouter();
 
-  const setActiveProject = useProjectStore(
-    (state) => state.setActiveProject,
-  );
-
   const [projects, setProjects] =
-    useState(initialProjects);
+    useState<Project[]>(initialProjects);
 
-  const [editingId, setEditingId] =
+  const [deleteDialogOpen, setDeleteDialogOpen] =
+    useState(false);
+
+  const [selectedProjectId, setSelectedProjectId] =
     useState<string | null>(null);
 
-  const [editingName, setEditingName] =
-    useState("");
+  const [deleting, setDeleting] = useState(false);
 
-  const [loadingId, setLoadingId] =
-    useState<string | null>(null);
-
-  const [error, setError] = useState("");
-
-  function openProject(project: Project) {
-    setActiveProject(project);
-
-    router.push(
-      `/overview?projectId=${encodeURIComponent(
-        project.id,
-      )}`,
-    );
+  function openDeleteDialog(projectId: string) {
+    setSelectedProjectId(projectId);
+    setDeleteDialogOpen(true);
   }
 
-  function startEditing(project: Project) {
-    setEditingId(project.id);
-    setEditingName(project.name);
-    setError("");
-  }
-
-  function cancelEditing() {
-    setEditingId(null);
-    setEditingName("");
-  }
-
-  async function renameProject(
-    projectId: string,
-  ) {
-    const name = editingName.trim();
-
-    if (!name) {
-      setError("Project name is required");
+  async function deleteProject() {
+    if (!selectedProjectId) {
       return;
     }
 
-    setLoadingId(projectId);
-    setError("");
+    setDeleting(true);
 
     try {
       const token = await getToken();
@@ -81,74 +74,7 @@ export function ProjectsList({
       }
 
       const response = await fetch(
-        `${API_URL}/v1/projects/${projectId}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ name }),
-        },
-      );
-
-      if (!response.ok) {
-        const body = await response.text();
-
-        throw new Error(
-          `Failed to rename project: ${response.status} ${body}`,
-        );
-      }
-
-      const data = await response.json();
-
-      setProjects((current) =>
-        current.map((project) =>
-          project.id === projectId
-            ? data.project
-            : project,
-        ),
-      );
-
-      cancelEditing();
-
-      router.refresh();
-    } catch (error) {
-      console.error(error);
-
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to rename project",
-      );
-    } finally {
-      setLoadingId(null);
-    }
-  }
-
-  async function deleteProject(
-    projectId: string,
-  ) {
-    const confirmed = window.confirm(
-      "Delete this project? All traces and API keys belonging to it will also be deleted.",
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setLoadingId(projectId);
-    setError("");
-
-    try {
-      const token = await getToken();
-
-      if (!token) {
-        throw new Error("Unable to get Clerk token");
-      }
-
-      const response = await fetch(
-        `${API_URL}/v1/projects/${projectId}`,
+        `${API_URL}/v1/projects/${selectedProjectId}`,
         {
           method: "DELETE",
           headers: {
@@ -165,165 +91,195 @@ export function ProjectsList({
         );
       }
 
-      const remainingProjects = projects.filter(
-        (project) => project.id !== projectId,
+      setProjects((current) =>
+        current.filter(
+          (project) =>
+            project.id !== selectedProjectId,
+        ),
       );
 
-      setProjects(remainingProjects);
+      setDeleteDialogOpen(false);
+      setSelectedProjectId(null);
 
-      if (remainingProjects.length > 0) {
-        openProject(remainingProjects[0]);
-      } else {
-        router.push("/projects");
-        router.refresh();
-      }
+      toast.add({
+        title: "Project deleted",
+        description:
+          "The project has been deleted successfully.",
+        type: "success",
+      });
+
+      router.refresh();
     } catch (error) {
       console.error(error);
 
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to delete project",
-      );
+      toast.add({
+        title: "Failed to delete project",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while deleting the project.",
+        type: "error",
+      });
     } finally {
-      setLoadingId(null);
+      setDeleting(false);
     }
+  }
+
+  async function copyProjectId(projectId: string) {
+    try {
+      await navigator.clipboard.writeText(projectId);
+
+      toast.add({
+        title: "Project ID copied",
+        type: "success",
+      });
+    } catch (error) {
+      console.error(error);
+
+      toast.add({
+        title: "Failed to copy project ID",
+        type: "error",
+      });
+    }
+  }
+
+  function openProject(projectId: string) {
+    router.push(
+      `/overview?projectId=${encodeURIComponent(projectId)}`,
+    );
   }
 
   if (projects.length === 0) {
     return (
-      <div className="rounded-lg border bg-card p-12 text-center">
-        <h2 className="text-sm font-medium">
-          No projects yet
-        </h2>
+      <div className="rounded-xl border bg-card">
+        <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center">
+          <div className="flex size-12 items-center justify-center rounded-xl border bg-muted/50">
+            <FolderKanban className="size-5 text-muted-foreground" />
+          </div>
 
-        <p className="mt-1 text-sm text-muted-foreground">
-          Create a project to start collecting traces.
-        </p>
+          <h2 className="mt-4 text-sm font-semibold">
+            No projects yet
+          </h2>
+
+          <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+            Create your first project to get started.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
-      <div className="border-b px-4 py-3">
-        <h2 className="text-sm font-medium">
-          Your projects
-        </h2>
-      </div>
-
-      {error && (
-        <div className="border-b px-4 py-3 text-xs text-destructive">
-          {error}
-        </div>
-      )}
-
-      <div className="divide-y">
-        {projects.map((project) => {
-          const isEditing =
-            editingId === project.id;
-
-          const isLoading =
-            loadingId === project.id;
-
-          return (
-            <div
-              key={project.id}
-              className="flex items-center gap-3 px-4 py-4"
-            >
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-muted text-xs font-semibold">
-                {project.name
-                  .charAt(0)
-                  .toUpperCase()}
+    <>
+      <div className="space-y-3">
+        {projects.map((project) => (
+          <div
+            key={project.id}
+            className="group rounded-xl border bg-card transition-colors hover:border-foreground/20"
+          >
+            <div className="flex items-center gap-4 p-4">
+              {/* Icon */}
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
+                <FolderKanban className="size-4.5 text-muted-foreground" />
               </div>
 
-              {isEditing ? (
-                <div className="min-w-0 flex-1">
-                  <input
-                    value={editingName}
-                    onChange={(event) =>
-                      setEditingName(
-                        event.target.value,
-                      )
+              {/* Project info */}
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-medium">
+                  {project.name}
+                </h3>
+
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <CalendarDays className="size-3" />
+
+                    {new Date(
+                      project.createdAt,
+                    ).toLocaleDateString(undefined, {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      copyProjectId(project.id)
                     }
-                    autoFocus
-                    disabled={isLoading}
-                    className="h-8 w-full rounded-md border bg-background px-2.5 text-sm outline-none focus:border-foreground"
-                  />
+                    className="flex max-w-[220px] items-center gap-1 font-mono text-[10px] hover:text-foreground"
+                    title="Copy project ID"
+                  >
+                    <span className="truncate">
+                      {project.id}
+                    </span>
+
+                    <Copy className="size-3 shrink-0" />
+                  </button>
                 </div>
-              ) : (
+              </div>
+
+              {/* Actions */}
+              <div className="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
                   onClick={() =>
-                    openProject(project)
+                    openDeleteDialog(project.id)
                   }
-                  className="min-w-0 flex-1 text-left"
+                  className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  title="Delete project"
                 >
-                  <div className="truncate text-sm font-medium">
-                    {project.name}
-                  </div>
-
-                  <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-                    {project.id}
-                  </div>
+                  <Trash2 className="size-3.5" />
                 </button>
-              )}
 
-              {isEditing ? (
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      renameProject(project.id)
-                    }
-                    disabled={isLoading}
-                    className="text-xs font-medium hover:underline disabled:opacity-50"
-                  >
-                    {isLoading
-                      ? "Saving..."
-                      : "Save"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={cancelEditing}
-                    disabled={isLoading}
-                    className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <div className="flex shrink-0 items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      startEditing(project)
-                    }
-                    disabled={isLoading}
-                    className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                  >
-                    Rename
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      deleteProject(project.id)
-                    }
-                    disabled={isLoading}
-                    className="text-xs text-destructive hover:underline disabled:opacity-50"
-                  >
-                    {isLoading
-                      ? "Deleting..."
-                      : "Delete"}
-                  </button>
-                </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    openProject(project.id)
+                  }
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-foreground px-3 text-xs font-medium text-background transition-opacity hover:opacity-90"
+                >
+                  Open
+                  <ArrowUpRight className="size-3.5" />
+                </button>
+              </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
-    </div>
+
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete project?
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              This action cannot be undone. All telemetry
+              associated with this project may become
+              inaccessible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={deleteProject}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete project"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

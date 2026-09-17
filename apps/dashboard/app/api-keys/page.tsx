@@ -48,24 +48,9 @@ export default async function ApiKeysPage({
     return (
         <div className="min-h-full bg-background">
             <div className="mx-auto w-full max-w-[1200px] px-6 py-8">
-                <div className="mb-8">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            API Keys
-                        </h1>
-
-                        <span className="rounded-md border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                            {activeProject.name}
-                        </span>
-                    </div>
-
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        Manage API keys used to send telemetry to this project.
-                    </p>
-                </div>
-
                 <ApiKeysList
-                    projectId={activeProject.id}
+                projectId={activeProject.id}
+                projectName={activeProject.name}
                 />
             </div>
         </div>

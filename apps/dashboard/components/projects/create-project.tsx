@@ -1,10 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { FolderPlus } from "lucide-react";
 
-import { useProjectStore } from "@/store/project-store";
+import { toast } from "@/components/ui/toast";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 const API_URL =
   process.env.NEXT_PUBLIC_TERRAX_API_URL ??
@@ -14,15 +23,10 @@ export function CreateProject() {
   const { getToken } = useAuth();
   const router = useRouter();
 
-  const setActiveProject = useProjectStore(
-    (state) => state.setActiveProject,
-  );
-
   const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
 
-  async function handleSubmit(
+  async function createProject(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
@@ -30,12 +34,15 @@ export function CreateProject() {
     const trimmedName = name.trim();
 
     if (!trimmedName) {
-      setError("Project name is required");
+      toast.add({
+        title: "Project name is required",
+        type: "error",
+      });
+
       return;
     }
 
-    setLoading(true);
-    setError("");
+    setCreating(true);
 
     try {
       const token = await getToken();
@@ -66,80 +73,83 @@ export function CreateProject() {
         );
       }
 
-      const data = await response.json();
+      setName("");
 
-      setActiveProject(data.project);
-
-      router.push(
-        `/overview?projectId=${encodeURIComponent(
-          data.project.id,
-        )}`,
-      );
+      toast.add({
+        title: "Project created",
+        description:
+          "Your Terrax project has been created successfully.",
+        type: "success",
+      });
 
       router.refresh();
     } catch (error) {
       console.error(error);
 
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to create project",
-      );
+      toast.add({
+        title: "Failed to create project",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while creating the project.",
+        type: "error",
+      });
     } finally {
-      setLoading(false);
+      setCreating(false);
     }
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-lg border bg-card"
-    >
-      <div className="border-b px-5 py-4">
-        <h2 className="text-sm font-semibold">
-          Create project
-        </h2>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2.5">
+          <div className="flex size-8 items-center justify-center rounded-lg border bg-muted/50">
+            <FolderPlus className="size-4 text-muted-foreground" />
+          </div>
 
-        <p className="mt-1 text-xs text-muted-foreground">
-          Create a project to isolate your traces and API keys.
-        </p>
-      </div>
-
-      <div className="space-y-4 p-5">
-        <div>
-          <label
-            htmlFor="project-name"
-            className="text-xs font-medium"
-          >
-            Project name
-          </label>
-
-          <input
-            id="project-name"
-            value={name}
-            onChange={(event) =>
-              setName(event.target.value)
-            }
-            placeholder="My AI Agent"
-            disabled={loading}
-            className="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground"
-          />
+          <CardTitle className="text-sm">
+            Create project
+          </CardTitle>
         </div>
 
-        {error && (
-          <p className="text-xs text-destructive">
-            {error}
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          Create a project to organize your telemetry.
+        </p>
+      </CardHeader>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="inline-flex h-9 items-center rounded-md bg-foreground px-4 text-xs font-medium text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      <CardContent>
+        <form
+          onSubmit={createProject}
+          className="space-y-4"
         >
-          {loading ? "Creating..." : "Create project"}
-        </button>
-      </div>
-    </form>
+          <div className="space-y-2">
+            <label
+              htmlFor="project-name"
+              className="text-xs font-medium"
+            >
+              Project name
+            </label>
+
+            <Input
+              id="project-name"
+              value={name}
+              onChange={(event) =>
+                setName(event.target.value)
+              }
+              placeholder="My AI Agent"
+              disabled={creating}
+            />
+          </div>
+
+          <Button
+            type="submit"
+            disabled={creating}
+            className="w-full"
+          >
+            {creating ? "Creating..." : "Create project"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
