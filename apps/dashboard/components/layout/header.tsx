@@ -338,22 +338,6 @@ export function Header() {
         </Button>
 
         {/* Notifications */}
-        {/* <Button
-          variant="ghost"
-          size="icon"
-          className="
-            size-8
-            rounded-lg
-            text-[#666666]
-            hover:bg-[#dedede]
-            hover:text-[#222222]
-          "
-        >
-          <Bell className="size-4" />
-          <span className="sr-only">
-            Notifications
-          </span>
-        </Button> */}
         <Notifications />
 
         {/* User */}

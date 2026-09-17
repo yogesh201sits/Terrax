@@ -40,6 +40,49 @@ model ApiKey {
   @@map("api_keys")
 }
 
+model Notification {
+  id        String   @id @default(uuid())
+
+  userId    String
+  projectId String?
+
+  type      String
+  title     String
+  message   String
+
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+
+  deliveries NotificationDelivery[]
+
+  @@index([userId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([type])
+  @@map("notifications")
+}
+
+model NotificationDelivery {
+  id String @id @default(uuid())
+
+  notificationId String
+  channel        String
+  status         String   @default("pending")
+
+  deliveredAt DateTime?
+  readAt      DateTime?
+  error       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, channel])
+  @@index([channel, status])
+  @@map("notification_deliveries")
+}
+
 model Trace {
   id        String   @id @default(uuid())
   projectId String
