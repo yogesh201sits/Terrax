@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import {
   Activity,
   Bot,
   Brain,
   ChartNetwork,
   Check,
-  ChevronUp,
   Code2,
   KeyRound,
   LayoutDashboard,
@@ -18,6 +20,13 @@ import {
 } from "lucide-react";
 
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -106,19 +115,23 @@ export function AppSidebar() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const projects = useProjectStore(
+    (state) => state.projects,
+  );
 
-  const projects = useProjectStore((state) => state.projects);
   const activeProject = useProjectStore(
     (state) => state.activeProject,
   );
+
   const setActiveProject = useProjectStore(
     (state) => state.setActiveProject,
   );
 
   const projectHref = (path: string) =>
     activeProject
-      ? `${path}?projectId=${encodeURIComponent(activeProject.id)}`
+      ? `${path}?projectId=${encodeURIComponent(
+          activeProject.id,
+        )}`
       : path;
 
   function handleProjectSelect(projectId: string) {
@@ -131,9 +144,10 @@ export function AppSidebar() {
     }
 
     setActiveProject(project);
-    setProjectMenuOpen(false);
 
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(
+      searchParams.toString(),
+    );
 
     params.set("projectId", project.id);
 
@@ -154,7 +168,11 @@ export function AppSidebar() {
             <SidebarMenuButton
               size="lg"
               className="group hover:bg-muted"
-              render={<Link href={projectHref("/overview")} />}
+              render={
+                <Link
+                  href={projectHref("/overview")}
+                />
+              }
             >
               <img
                 src="/logo.png"
@@ -212,7 +230,9 @@ export function AppSidebar() {
                 {section.items.map((item) => {
                   const isActive =
                     pathname === item.href ||
-                    pathname.startsWith(`${item.href}/`);
+                    pathname.startsWith(
+                      `${item.href}/`,
+                    );
 
                   return (
                     <SidebarMenuItem key={item.title}>
@@ -245,7 +265,9 @@ export function AppSidebar() {
                           active:shadow-[inset_4px_4px_7px_#c3c3c3,inset_-4px_-4px_7px_#ffffff]
                         `}
                         render={
-                          <Link href={projectHref(item.href)} />
+                          <Link
+                            href={projectHref(item.href)}
+                          />
                         }
                       >
                         <item.icon
@@ -284,29 +306,166 @@ export function AppSidebar() {
 
       {/* Project Selector */}
       <SidebarFooter className="bg-[#e8e8e8] p-3">
-        <div className="relative">
-          {/* Project Button */}
-          <button
-            type="button"
-            onClick={() =>
-              setProjectMenuOpen((open) => !open)
-            }
+        {activeProject ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <SidebarMenuButton
+                  size="lg"
+                  className="
+                    h-14
+                    rounded-xl
+                    bg-[#e8e8e8]
+                    px-3
+                    shadow-[5px_5px_10px_#c7c7c7,-5px_-5px_10px_#ffffff]
+                    transition-all
+                    duration-200
+                    hover:bg-[#e8e8e8]
+                    hover:shadow-[7px_7px_14px_#c5c5c5,-7px_-7px_14px_#ffffff]
+                    active:shadow-[inset_3px_3px_6px_#c7c7c7,inset_-3px_-3px_6px_#ffffff]
+                  "
+                />
+              }
+            >
+              <div
+                className="
+                  flex
+                  size-8
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-lg
+                  bg-[#e8e8e8]
+                  text-xs
+                  font-semibold
+                  text-[#555555]
+                  shadow-[inset_2px_2px_4px_#c7c7c7,inset_-2px_-2px_4px_#ffffff]
+                "
+              >
+                {activeProject.name
+                  .charAt(0)
+                  .toUpperCase()}
+              </div>
+
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span
+                  className="
+                    truncate
+                    font-medium
+                    text-[#333333]
+                    [text-shadow:1px_1px_1px_#cfcfcf,-1px_-1px_1px_#ffffff]
+                  "
+                >
+                  {activeProject.name}
+                </span>
+
+                <span
+                  className="
+                    truncate
+                    text-xs
+                    text-[#777777]
+                    [text-shadow:1px_1px_1px_#d2d2d2,-1px_-1px_1px_#ffffff]
+                  "
+                >
+                  Development
+                </span>
+              </div>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              align="end"
+              side="top"
+              className="
+                w-[--anchor-width]
+                border-[#d2d2d2]
+                bg-[#e8e8e8]
+              "
+            >
+              {projects.map((project) => (
+                <DropdownMenuItem
+                  key={project.id}
+                  onClick={() =>
+                    handleProjectSelect(
+                      project.id,
+                    )
+                  }
+                  className="
+                    flex
+                    items-center
+                    gap-2
+                    rounded-lg
+                    text-[#555555]
+                    focus:bg-[#eeeeee]
+                    focus:text-[#222222]
+                  "
+                >
+                  <div
+                    className="
+                      flex
+                      size-7
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-md
+                      border
+                      border-[#d8d8d8]
+                      bg-[#e8e8e8]
+                      text-[10px]
+                      font-semibold
+                      text-[#555555]
+                      shadow-[inset_1px_1px_3px_#c7c7c7,inset_-1px_-1px_3px_#ffffff]
+                    "
+                  >
+                    {project.name
+                      .charAt(0)
+                      .toUpperCase()}
+                  </div>
+
+                  <span className="min-w-0 flex-1 truncate">
+                    {project.name}
+                  </span>
+
+                  {project.id ===
+                    activeProject.id && (
+                    <Check className="size-4 shrink-0 text-[#333333]" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                render={
+                  <Link href="/projects" />
+                }
+                className="
+                  cursor-pointer
+                  text-[#555555]
+                  focus:bg-[#eeeeee]
+                  focus:text-[#222222]
+                "
+              >
+                + New project
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <SidebarMenuButton
+            size="lg"
             className="
-              flex
               h-14
-              w-full
-              items-center
-              gap-3
               rounded-xl
               bg-[#e8e8e8]
               px-3
-              text-left
               shadow-[5px_5px_10px_#c7c7c7,-5px_-5px_10px_#ffffff]
               transition-all
               duration-200
+              hover:bg-[#e8e8e8]
               hover:shadow-[7px_7px_14px_#c5c5c5,-7px_-7px_14px_#ffffff]
-              active:shadow-[inset_3px_3px_6px_#c7c7c7,inset_-3px_-3px_6px_#ffffff]
             "
+            render={
+              <Link href="/projects" />
+            }
           >
             <div
               className="
@@ -316,180 +475,41 @@ export function AppSidebar() {
                 items-center
                 justify-center
                 rounded-lg
+                border
+                border-[#d8d8d8]
                 bg-[#e8e8e8]
-                text-xs
+                text-sm
                 font-semibold
                 text-[#555555]
-                shadow-[inset_2px_2px_4px_#c7c7c7,inset_-2px_-2px_4px_#ffffff]
+                shadow-[inset_1px_1px_3px_#c7c7c7,inset_-1px_-1px_3px_#ffffff]
               "
             >
-              {activeProject?.name
-                ?.charAt(0)
-                .toUpperCase() ?? "Y"}
+              +
             </div>
 
-            <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
+            <div className="grid flex-1 text-left text-sm leading-tight">
               <span
                 className="
-                  truncate
                   font-medium
                   text-[#333333]
                   [text-shadow:1px_1px_1px_#cfcfcf,-1px_-1px_1px_#ffffff]
                 "
               >
-                {activeProject?.name ?? "Loading..."}
+                Create project
               </span>
 
               <span
                 className="
-                  flex
-                  items-center
-                  gap-1.5
                   text-xs
                   text-[#777777]
                   [text-shadow:1px_1px_1px_#d2d2d2,-1px_-1px_1px_#ffffff]
                 "
               >
-                <span
-                  className="
-                    size-1.5
-                    rounded-full
-                    bg-green-500
-                    shadow-[2px_2px_3px_#c7c7c7,-1px_-1px_2px_#ffffff]
-                  "
-                />
-
-                Development
+                No project selected
               </span>
             </div>
-
-            <ChevronUp
-              className={`
-                ml-auto
-                size-4
-                shrink-0
-                text-[#777777]
-                transition-transform
-                duration-200
-                ${projectMenuOpen ? "" : "rotate-180"}
-              `}
-            />
-          </button>
-
-          {/* Project Menu */}
-          {projectMenuOpen && (
-            <div
-              className="
-                absolute
-                bottom-[calc(100%+10px)]
-                left-0
-                z-50
-                w-full
-                overflow-hidden
-                rounded-xl
-                border
-                border-[#d2d2d2]
-                bg-[#e8e8e8]
-                p-2
-                shadow-[8px_8px_18px_#c3c3c3,-8px_-8px_18px_#ffffff]
-              "
-            >
-              <div
-                className="
-                  px-2
-                  pb-2
-                  pt-1
-                  text-[10px]
-                  font-semibold
-                  uppercase
-                  tracking-[0.12em]
-                  text-[#888888]
-                "
-              >
-                Projects
-              </div>
-
-              <div className="space-y-1">
-                {projects.length === 0 ? (
-                  <div className="px-2 py-3 text-xs text-[#777777]">
-                    No projects found
-                  </div>
-                ) : (
-                  projects.map((project) => {
-                    const isSelected =
-                      activeProject?.id === project.id;
-
-                    return (
-                      <button
-                        key={project.id}
-                        type="button"
-                        onClick={() =>
-                          handleProjectSelect(project.id)
-                        }
-                        className={`
-                          flex
-                          w-full
-                          items-center
-                          gap-2
-                          rounded-lg
-                          px-2
-                          py-2
-                          text-left
-                          text-sm
-                          transition-all
-                          duration-150
-
-                          ${
-                            isSelected
-                              ? `
-                                bg-[#e8e8e8]
-                                text-[#222222]
-                                shadow-[inset_2px_2px_4px_#c7c7c7,inset_-2px_-2px_4px_#ffffff]
-                              `
-                              : `
-                                text-[#555555]
-                                hover:bg-[#e8e8e8]
-                                hover:text-[#222222]
-                                hover:shadow-[2px_2px_5px_#c7c7c7,-2px_-2px_5px_#ffffff]
-                              `
-                          }
-                        `}
-                      >
-                        <div
-                          className="
-                            flex
-                            size-6
-                            shrink-0
-                            items-center
-                            justify-center
-                            rounded-md
-                            bg-[#e8e8e8]
-                            text-[10px]
-                            font-semibold
-                            text-[#555555]
-                            shadow-[inset_1px_1px_3px_#c7c7c7,inset_-1px_-1px_3px_#ffffff]
-                          "
-                        >
-                          {project.name
-                            .charAt(0)
-                            .toUpperCase()}
-                        </div>
-
-                        <span className="min-w-0 flex-1 truncate">
-                          {project.name}
-                        </span>
-
-                        {isSelected && (
-                          <Check className="size-3.5 shrink-0 text-[#333333]" />
-                        )}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+          </SidebarMenuButton>
+        )}
       </SidebarFooter>
     </Sidebar>
   );
