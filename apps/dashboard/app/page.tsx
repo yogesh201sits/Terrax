@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { UserButton, useUser } from "@clerk/nextjs";
 
 const features = [
   {
@@ -21,15 +24,14 @@ const features = [
 const metrics = ["Traces", "Latency", "Errors", "Token Usage", "Cost"];
 
 export default function Home() {
+  const { isSignedIn } = useUser();
+
   return (
     <main className="min-h-screen bg-[#e8e8e8] text-[#202020]">
       {/* Navigation */}
       <header className="border-b border-[#d5d5d5] bg-[#e8e8e8]">
         <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-6">
-          <Link
-            href="/"
-            className="flex items-center gap-3"
-          >
+          <Link href="/" className="flex items-center gap-3">
             <div className="flex size-11 items-center justify-center">
               <img
                 src="/logo.png"
@@ -43,22 +45,69 @@ export default function Home() {
             </span>
           </Link>
 
-          <Link
-            href="/overview"
-            className="rounded-xl bg-[#e8e8e8] px-5 py-2.5 text-sm font-semibold shadow-[5px_5px_10px_#c9c9c9,-5px_-5px_10px_#ffffff] transition-all hover:shadow-[3px_3px_6px_#c9c9c9,-3px_-3px_6px_#ffffff] active:translate-y-px active:shadow-[inset_3px_3px_6px_#c9c9c9,inset_-3px_-3px_6px_#ffffff]"
-          >
-            Open Dashboard
-          </Link>
+          <div className="flex items-center gap-3">
+            {!isSignedIn && (
+              <Link
+                href="/sign-in"
+                className="
+                  rounded-lg
+                  px-4
+                  py-2
+                  text-sm
+                  font-medium
+                  text-[#444444]
+                  transition-colors
+                  hover:bg-[#dedede]
+                "
+              >
+                Login
+              </Link>
+            )}
+
+            {isSignedIn && (
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: "size-8",
+                    userButtonTrigger:
+                      "rounded-full focus:shadow-none",
+                  },
+                }}
+              />
+            )}
+
+            <Link
+              href="/overview"
+              className="
+                rounded-lg
+                bg-[#202020]
+                px-4
+                py-2
+                text-sm
+                font-medium
+                text-white
+                shadow-[4px_4px_8px_#c5c5c5]
+                transition-all
+                hover:-translate-y-px
+                active:translate-y-0
+              "
+            >
+              Open Dashboard
+            </Link>
+          </div>
         </div>
       </header>
 
       {/* Hero */}
-     <section className="relative overflow-hidden border-b border-[#d5d5d5]">
+      <section className="relative overflow-hidden border-b border-[#d5d5d5]">
         <div
           className="
-            pointer-events-none absolute
-            left-1/2 top-[50%]
-            h-[220px] w-[760px]
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[50%]
+            h-[220px]
+            w-[760px]
             -translate-x-1/2
             rounded-[45%]
             bg-[#e8e8e8]
@@ -69,9 +118,12 @@ export default function Home() {
 
         <div
           className="
-            pointer-events-none absolute
-            left-1/2 top-[45%]
-            h-[90px] w-[430px]
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[45%]
+            h-[90px]
+            w-[430px]
             -translate-x-[10%]
             rotate-[-18deg]
             rounded-[50%]
@@ -80,11 +132,15 @@ export default function Home() {
             shadow-[inset_10px_10px_22px_#d1d1d1,inset_-10px_-10px_22px_#ffffff]
           "
         />
+
         <div
           className="
-            pointer-events-none absolute
-            left-1/4 top-[45%]
-            h-[90px] w-[430px]
+            pointer-events-none
+            absolute
+            left-1/4
+            top-[45%]
+            h-[90px]
+            w-[430px]
             -translate-x-[10%]
             rotate-[18deg]
             rounded-[50%]
@@ -101,9 +157,12 @@ export default function Home() {
                 src="/logo.png"
                 alt="Terrax"
                 className="
-                  absolute left-1/2 top-1/2
+                  absolute
+                  left-1/2
+                  top-1/2
                   size-45
-                  -translate-x-1/2 -translate-y-1/2
+                  -translate-x-1/2
+                  -translate-y-1/2
                   scale-450
                   object-contain
                   brightness-0
@@ -137,14 +196,41 @@ export default function Home() {
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <Link
               href="/overview"
-              className="rounded-xl bg-[#202020] px-7 py-3.5 text-sm font-semibold text-white shadow-[6px_6px_12px_#c3c3c3] transition-all hover:-translate-y-0.5 hover:shadow-[8px_8px_16px_#c0c0c0] active:translate-y-0 active:shadow-[inset_3px_3px_6px_#111]"
+              className="
+                rounded-xl
+                bg-[#202020]
+                px-7
+                py-3.5
+                text-sm
+                font-semibold
+                text-white
+                shadow-[6px_6px_12px_#c3c3c3]
+                transition-all
+                hover:-translate-y-0.5
+                hover:shadow-[8px_8px_16px_#c0c0c0]
+                active:translate-y-0
+                active:shadow-[inset_3px_3px_6px_#111]
+              "
             >
               Open Dashboard
             </Link>
 
             <Link
               href="/traces"
-              className="rounded-xl bg-[#e8e8e8] px-7 py-3.5 text-sm font-semibold shadow-[6px_6px_12px_#c7c7c7,-6px_-6px_12px_#ffffff] transition-all hover:-translate-y-0.5 hover:shadow-[8px_8px_16px_#c5c5c5,-8px_-8px_16px_#ffffff] active:translate-y-0 active:shadow-[inset_3px_3px_6px_#c5c5c5,inset_-3px_-3px_6px_#ffffff]"
+              className="
+                rounded-xl
+                bg-[#e8e8e8]
+                px-7
+                py-3.5
+                text-sm
+                font-semibold
+                shadow-[6px_6px_12px_#c7c7c7,-6px_-6px_12px_#ffffff]
+                transition-all
+                hover:-translate-y-0.5
+                hover:shadow-[8px_8px_16px_#c5c5c5,-8px_-8px_16px_#ffffff]
+                active:translate-y-0
+                active:shadow-[inset_3px_3px_6px_#c5c5c5,inset_-3px_-3px_6px_#ffffff]
+              "
             >
               Explore Traces
             </Link>
@@ -154,7 +240,19 @@ export default function Home() {
             {metrics.map((metric) => (
               <div
                 key={metric}
-                className="flex items-center gap-2 rounded-full bg-[#e8e8e8] px-4 py-2 text-xs font-medium text-[#707070] shadow-[3px_3px_7px_#c9c9c9,-3px_-3px_7px_#ffffff]"
+                className="
+                  flex
+                  items-center
+                  gap-2
+                  rounded-full
+                  bg-[#e8e8e8]
+                  px-4
+                  py-2
+                  text-xs
+                  font-medium
+                  text-[#707070]
+                  shadow-[3px_3px_7px_#c9c9c9,-3px_-3px_7px_#ffffff]
+                "
               >
                 <span className="size-1.5 rounded-full bg-[#202020]" />
                 {metric}
@@ -163,7 +261,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-      
 
       {/* What Terrax Does */}
       <section className="border-b border-[#d5d5d5]">
@@ -188,9 +285,31 @@ export default function Home() {
             {features.map((feature, index) => (
               <div
                 key={feature.title}
-                className="rounded-2xl bg-[#e8e8e8] p-7 shadow-[9px_9px_18px_#c7c7c7,-9px_-9px_18px_#ffffff] transition-all duration-200 hover:-translate-y-1 hover:shadow-[12px_12px_24px_#c4c4c4,-12px_-12px_24px_#ffffff]"
+                className="
+                  rounded-2xl
+                  bg-[#e8e8e8]
+                  p-7
+                  shadow-[9px_9px_18px_#c7c7c7,-9px_-9px_18px_#ffffff]
+                  transition-all
+                  duration-200
+                  hover:-translate-y-1
+                  hover:shadow-[12px_12px_24px_#c4c4c4,-12px_-12px_24px_#ffffff]
+                "
               >
-                <div className="flex size-11 items-center justify-center rounded-xl bg-[#e8e8e8] text-sm font-bold text-[#555] shadow-[inset_3px_3px_6px_#c9c9c9,inset_-3px_-3px_6px_#ffffff]">
+                <div
+                  className="
+                    flex
+                    size-11
+                    items-center
+                    justify-center
+                    rounded-xl
+                    bg-[#e8e8e8]
+                    text-sm
+                    font-bold
+                    text-[#555]
+                    shadow-[inset_3px_3px_6px_#c9c9c9,inset_-3px_-3px_6px_#ffffff]
+                  "
+                >
                   0{index + 1}
                 </div>
 
@@ -228,72 +347,61 @@ export default function Home() {
                 without replacing the telemetry ecosystem you already use.
               </p>
 
-            <div className="mt-9 inline-flex rounded-2xl bg-[#e8e8e8] p-1.5 shadow-[8px_8px_18px_#c5c5c5,-8px_-8px_18px_#ffffff] transition-all duration-300 hover:shadow-[10px_10px_22px_#c2c2c2,-10px_-10px_22px_#ffffff]">
-              <Link
-                href="/overview"
-                className="
-                  group
-                  relative
-                  inline-flex
-                  items-center
-                  gap-2
-                  overflow-hidden
-                  rounded-xl
-                  bg-[#e8e8e8]
-                  px-6
-                  py-3
-                  text-sm
-                  font-semibold
-                  text-zinc-800
-                  shadow-[inset_2px_2px_5px_#c6c6c6,inset_-2px_-2px_5px_#ffffff]
-                  transition-all
-                  duration-300
-
-                  hover:-translate-y-0.5
-                  hover:shadow-[6px_6px_12px_#c5c5c5,-6px_-6px_12px_#ffffff]
-
-                  active:translate-y-0
-                  active:shadow-[inset_4px_4px_8px_#c3c3c3,inset_-4px_-4px_8px_#ffffff]
-                "
-              >
-                <span className="relative z-10">
-                  View your telemetry
-                </span>
-
-                <span
+              <div className="mt-9 inline-flex rounded-2xl bg-[#e8e8e8] p-1.5 shadow-[8px_8px_18px_#c5c5c5,-8px_-8px_18px_#ffffff] transition-all duration-300 hover:shadow-[10px_10px_22px_#c2c2c2,-10px_-10px_22px_#ffffff]">
+                <Link
+                  href="/overview"
                   className="
+                    group
                     relative
-                    z-10
-                    flex
-                    h-6
-                    w-6
+                    inline-flex
                     items-center
-                    justify-center
-                    rounded-full
+                    gap-2
+                    overflow-hidden
+                    rounded-xl
                     bg-[#e8e8e8]
-                    text-zinc-600
-                    shadow-[2px_2px_5px_#c5c5c5,-2px_-2px_5px_#ffffff]
+                    px-6
+                    py-3
+                    text-sm
+                    font-semibold
+                    text-zinc-800
+                    shadow-[inset_2px_2px_5px_#c6c6c6,inset_-2px_-2px_5px_#ffffff]
                     transition-all
                     duration-300
-                    group-hover:translate-x-0.5
-                    group-hover:text-zinc-900
+                    hover:-translate-y-0.5
+                    hover:shadow-[6px_6px_12px_#c5c5c5,-6px_-6px_12px_#ffffff]
+                    active:translate-y-0
+                    active:shadow-[inset_4px_4px_8px_#c3c3c3,inset_-4px_-4px_8px_#ffffff]
                   "
                 >
-                  →
-                </span>
+                  <span className="relative z-10">
+                    View your telemetry
+                  </span>
 
-                <span
-                  className="
-                    absolute
-                    inset-x-6
-                    top-0
-                    h-px
-                    bg-white/80
-                  "
-                />
-              </Link>
-            </div>
-              
+                  <span
+                    className="
+                      relative
+                      z-10
+                      flex
+                      h-6
+                      w-6
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-[#e8e8e8]
+                      text-zinc-600
+                      shadow-[2px_2px_5px_#c5c5c5,-2px_-2px_5px_#ffffff]
+                      transition-all
+                      duration-300
+                      group-hover:translate-x-0.5
+                      group-hover:text-zinc-900
+                    "
+                  >
+                    →
+                  </span>
+
+                  <span className="absolute inset-x-6 top-0 h-px bg-white/80" />
+                </Link>
+              </div>
             </div>
 
             {/* Telemetry Visual */}
@@ -371,7 +479,16 @@ export default function Home() {
             {metrics.map((metric) => (
               <div
                 key={metric}
-                className="rounded-2xl bg-[#e8e8e8] px-6 py-9 text-center shadow-[7px_7px_14px_#c8c8c8,-7px_-7px_14px_#ffffff] transition-all hover:-translate-y-1"
+                className="
+                  rounded-2xl
+                  bg-[#e8e8e8]
+                  px-6
+                  py-9
+                  text-center
+                  shadow-[7px_7px_14px_#c8c8c8,-7px_-7px_14px_#ffffff]
+                  transition-all
+                  hover:-translate-y-1
+                "
               >
                 <p className="text-sm font-semibold">{metric}</p>
               </div>
@@ -395,7 +512,21 @@ export default function Home() {
 
             <Link
               href="/overview"
-              className="mt-9 inline-flex rounded-xl bg-[#202020] px-7 py-3.5 text-sm font-semibold text-white shadow-[6px_6px_12px_#c1c1c1] transition-all hover:-translate-y-0.5 active:translate-y-0"
+              className="
+                mt-9
+                inline-flex
+                rounded-xl
+                bg-[#202020]
+                px-7
+                py-3.5
+                text-sm
+                font-semibold
+                text-white
+                shadow-[6px_6px_12px_#c1c1c1]
+                transition-all
+                hover:-translate-y-0.5
+                active:translate-y-0
+              "
             >
               Open Terrax Dashboard
             </Link>
@@ -414,6 +545,7 @@ export default function Home() {
                 className="size-15 object-cover brightness-0"
               />
             </div>
+
             <span className="font-medium">Terrax</span>
           </div>
 
@@ -444,7 +576,9 @@ function TraceItem({
       <div className="flex items-center gap-3">
         <span className="size-2 rounded-full bg-[#202020]" />
 
-        <span className="text-sm font-medium">{name}</span>
+        <span className="text-sm font-medium">
+          {name}
+        </span>
       </div>
 
       <div className="flex items-center gap-3 text-xs text-[#777]">
