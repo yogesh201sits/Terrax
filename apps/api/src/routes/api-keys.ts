@@ -1,15 +1,20 @@
-import { randomBytes, createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 import { prisma } from "@terrax/database";
 import { Hono } from "hono";
 
 import { clerkAuthMiddleware } from "../middleware/clerk-auth";
+import { createNotification } from "../services/notifications/notification-service";
+import { NotificationType } from "../services/notifications/types";
 import type { AppVariables } from "../types";
 
 const apiKeys = new Hono<{
   Variables: AppVariables;
 }>();
 
+/**
+ * Create API key
+ */
 apiKeys.post(
   "/projects/:projectId/api-keys",
   clerkAuthMiddleware,
@@ -50,7 +55,6 @@ apiKeys.post(
     }
 
     const secret = randomBytes(32).toString("hex");
-
     const apiKey = `TRX_${secret}`;
 
     const keyHash = createHash("sha256")
@@ -75,6 +79,18 @@ apiKeys.post(
       },
     });
 
+    await createNotification({
+      userId,
+      projectId,
+      type: NotificationType.API_KEY_CREATED,
+      title: "API key created",
+      message: `API key "${record.name}" was created.`,
+      metadata: {
+        apiKeyId: record.id,
+        keyPrefix: record.keyPrefix,
+      },
+    });
+
     return c.json(
       {
         apiKey,
@@ -85,6 +101,9 @@ apiKeys.post(
   },
 );
 
+/**
+ * Get project API keys
+ */
 apiKeys.get(
   "/projects/:projectId/api-keys",
   clerkAuthMiddleware,
@@ -134,8 +153,81 @@ apiKeys.get(
   },
 );
 
+/**
+ * Revoke API key
+ */
 apiKeys.delete(
   "/projects/:projectId/api-keys/:keyId",
+  clerkAuthMiddleware,
+  async (c) => {
+    const userId = c.get("userId");
+    const projectId = c.req.param("projectId");
+    const keyId = c.req.param("keyId");
+
+    const apiKey = await prisma.apiKey.findFirst({
+      where: {
+        id: keyId,
+        projectId,
+        project: {
+          userId,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        keyPrefix: true,
+        revokedAt: true,
+      },
+    });
+
+    if (!apiKey) {
+      return c.json(
+        {
+          error: "API key not found",
+        },
+        404,
+      );
+    }
+
+    if (apiKey.revokedAt) {
+      return c.json(
+        {
+          error: "API key already revoked",
+        },
+        400,
+      );
+    }
+
+    await prisma.apiKey.update({
+      where: {
+        id: keyId,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+
+    await createNotification({
+      userId,
+      projectId,
+      type: NotificationType.API_KEY_REVOKED,
+      title: "API key revoked",
+      message: `API key "${apiKey.name}" was revoked.`,
+      metadata: {
+        apiKeyId: apiKey.id,
+        keyPrefix: apiKey.keyPrefix,
+      },
+    });
+
+    return c.body(null, 204);
+  },
+);
+
+/**
+ * Permanently delete revoked API key
+ */
+apiKeys.delete(
+  "/projects/:projectId/api-keys/:keyId/permanent",
   clerkAuthMiddleware,
   async (c) => {
     const userId = c.get("userId");
@@ -165,21 +257,18 @@ apiKeys.delete(
       );
     }
 
-    if (apiKey.revokedAt) {
+    if (!apiKey.revokedAt) {
       return c.json(
         {
-          error: "API key already revoked",
+          error: "API key must be revoked before deletion",
         },
         400,
       );
     }
 
-    await prisma.apiKey.update({
+    await prisma.apiKey.delete({
       where: {
         id: keyId,
-      },
-      data: {
-        revokedAt: new Date(),
       },
     });
 

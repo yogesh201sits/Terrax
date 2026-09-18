@@ -3,60 +3,90 @@ import { Hono } from "hono";
 import { prisma } from "@terrax/database";
 
 import { clerkAuthMiddleware } from "../middleware/clerk-auth";
+import { createNotification } from "../services/notifications/notification-service";
+import { NotificationType } from "../services/notifications/types";
 import type { AppVariables } from "../types";
 
 const projects = new Hono<{
   Variables: AppVariables;
 }>();
 
-projects.post("/projects", clerkAuthMiddleware, async (c) => {
-  const userId = c.get("userId");
+/**
+ * Create project
+ */
+projects.post(
+  "/projects",
+  clerkAuthMiddleware,
+  async (c) => {
+    const userId = c.get("userId");
 
-  const body = await c.req.json<{
-    name?: string;
-  }>();
+    const body = await c.req.json<{
+      name?: string;
+    }>();
 
-  if (!body.name?.trim()) {
+    if (!body.name?.trim()) {
+      return c.json(
+        {
+          error: "Project name is required",
+        },
+        400,
+      );
+    }
+
+    const project = await prisma.project.create({
+      data: {
+        name: body.name.trim(),
+        userId,
+      },
+    });
+
+    await createNotification({
+      userId,
+      projectId: project.id,
+      type: NotificationType.PROJECT_CREATED,
+      title: "Project created",
+      message: `Project "${project.name}" was created.`,
+      metadata: {
+        projectId: project.id,
+      },
+    });
+
     return c.json(
       {
-        error: "Project name is required",
+        project,
       },
-      400,
+      201,
     );
-  }
+  },
+);
 
-  const project = await prisma.project.create({
-    data: {
-      name: body.name.trim(),
-      userId,
-    },
-  });
+/**
+ * Get current user's projects
+ */
+projects.get(
+  "/projects",
+  clerkAuthMiddleware,
+  async (c) => {
+    const userId = c.get("userId");
 
-  return c.json(
-    {
-      project,
-    },
-    201,
-  );
-});
+    const projects = await prisma.project.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
-projects.get("/projects", clerkAuthMiddleware, async (c) => {
-  const userId = c.get("userId");
+    return c.json({
+      projects,
+    });
+  },
+);
 
-  const projects = await prisma.project.findMany({
-    where: {
-      userId,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-
-  return c.json({
-    projects,
-  });
-});
-
+/**
+ * Get project
+ */
 projects.get(
   "/projects/:projectId",
   clerkAuthMiddleware,
@@ -86,6 +116,9 @@ projects.get(
   },
 );
 
+/**
+ * Update project
+ */
 projects.patch(
   "/projects/:projectId",
   clerkAuthMiddleware,
@@ -131,12 +164,26 @@ projects.patch(
       },
     });
 
+    await createNotification({
+      userId,
+      projectId: updatedProject.id,
+      type: NotificationType.PROJECT_UPDATED,
+      title: "Project updated",
+      message: `Project "${updatedProject.name}" was updated.`,
+      metadata: {
+        projectId: updatedProject.id,
+      },
+    });
+
     return c.json({
       project: updatedProject,
     });
   },
 );
 
+/**
+ * Delete project
+ */
 projects.delete(
   "/projects/:projectId",
   clerkAuthMiddleware,
@@ -163,6 +210,17 @@ projects.delete(
     await prisma.project.delete({
       where: {
         id: projectId,
+      },
+    });
+
+    await createNotification({
+      userId,
+      type: NotificationType.PROJECT_DELETED,
+      title: "Project deleted",
+      message: `Project "${project.name}" was deleted.`,
+      metadata: {
+        projectId: project.id,
+        projectName: project.name,
       },
     });
 

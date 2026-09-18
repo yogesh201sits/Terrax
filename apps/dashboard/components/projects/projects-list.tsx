@@ -193,9 +193,7 @@ export function ProjectsList({
                   <span className="flex items-center gap-1">
                     <CalendarDays className="size-3" />
 
-                    {new Date(
-                      project.createdAt,
-                    ).toLocaleDateString(undefined, {
+                    {new Date(project.createdAt).toLocaleDateString("en-GB", {
                       day: "2-digit",
                       month: "short",
                       year: "numeric",

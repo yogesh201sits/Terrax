@@ -13,7 +13,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +32,12 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Copy, KeyRound, Plus, Trash2 } from "lucide-react";
+import {
+  Copy,
+  KeyRound,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
 const API_URL =
   process.env.NEXT_PUBLIC_TERRAX_API_URL ??
@@ -55,15 +65,25 @@ export function ApiKeysList({
 
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [creating, setCreating] = useState(false);
   const [revoking, setRevoking] = useState(false);
-  const [name, setName] = useState("");
-  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
-  const [selectedKeyId, setSelectedKeyId] = useState<string | null>(
+  const [name, setName] = useState("");
+  const [newApiKey, setNewApiKey] = useState<string | null>(
     null,
   );
+
+  const [revokeDialogOpen, setRevokeDialogOpen] =
+    useState(false);
+
+  const [deleteDialogOpen, setDeleteDialogOpen] =
+    useState(false);
+
+  const [selectedKeyId, setSelectedKeyId] = useState<
+    string | null
+  >(null);
 
   async function getAuthToken() {
     const token = await getToken();
@@ -73,6 +93,14 @@ export function ApiKeysList({
     }
 
     return token;
+  }
+
+  function formatDate(date: string) {
+    return new Date(date).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   }
 
   async function loadKeys() {
@@ -197,6 +225,11 @@ export function ApiKeysList({
     setRevokeDialogOpen(true);
   }
 
+  function openDeleteDialog(keyId: string) {
+    setSelectedKeyId(keyId);
+    setDeleteDialogOpen(true);
+  }
+
   async function revokeKey() {
     if (!selectedKeyId) {
       return;
@@ -261,6 +294,65 @@ export function ApiKeysList({
     }
   }
 
+  async function deleteKey() {
+    if (!selectedKeyId) {
+      return;
+    }
+
+    setDeleting(true);
+
+    try {
+      const token = await getAuthToken();
+
+      const response = await fetch(
+        `${API_URL}/v1/projects/${projectId}/api-keys/${selectedKeyId}/permanent`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const body = await response.text();
+
+        throw new Error(
+          `Failed to delete API key: ${response.status} ${body}`,
+        );
+      }
+
+      setKeys((current) =>
+        current.filter(
+          (key) => key.id !== selectedKeyId,
+        ),
+      );
+
+      setDeleteDialogOpen(false);
+      setSelectedKeyId(null);
+
+      toast.add({
+        title: "API key deleted",
+        description:
+          "The revoked API key was permanently deleted.",
+        type: "success",
+      });
+    } catch (error) {
+      console.error(error);
+
+      toast.add({
+        title: "Failed to delete API key",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while deleting the API key.",
+        type: "error",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function copyKey() {
     if (!newApiKey) {
       return;
@@ -301,7 +393,8 @@ export function ApiKeysList({
         </div>
 
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage API keys used to send telemetry to this project.
+          Manage API keys used to send telemetry to this
+          project.
         </p>
       </div>
 
@@ -388,7 +481,8 @@ export function ApiKeysList({
             </CardTitle>
 
             <Badge variant="outline">
-              {keys.length} {keys.length === 1 ? "key" : "keys"}
+              {keys.length}{" "}
+              {keys.length === 1 ? "key" : "keys"}
             </Badge>
           </div>
         </CardHeader>
@@ -454,13 +548,24 @@ export function ApiKeysList({
                     </TableCell>
 
                     <TableCell className="text-xs text-muted-foreground">
-                      {new Date(
-                        key.createdAt,
-                      ).toLocaleDateString()}
+                      {formatDate(key.createdAt)}
                     </TableCell>
 
                     <TableCell className="text-right">
-                      {!key.revokedAt && (
+                      {key.revokedAt ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() =>
+                            openDeleteDialog(key.id)
+                          }
+                        >
+                          <Trash2 className="size-4" />
+                          Delete
+                        </Button>
+                      ) : (
                         <Button
                           type="button"
                           variant="ghost"
@@ -511,7 +616,44 @@ export function ApiKeysList({
               disabled={revoking}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {revoking ? "Revoking..." : "Revoke API key"}
+              {revoking
+                ? "Revoking..."
+                : "Revoke API key"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Permanent delete confirmation */}
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete API key permanently?
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              This will permanently remove the revoked API key
+              from Terrax. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={deleteKey}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting
+                ? "Deleting..."
+                : "Delete API key"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
