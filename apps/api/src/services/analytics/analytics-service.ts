@@ -361,3 +361,133 @@ function normalizeStatus(value: unknown): string {
 
   return "UNSET";
 }
+export type ToolAnalytics = {
+  name: string;
+  calls: number;
+  successfulCalls: number;
+  failedCalls: number;
+  successRate: number;
+  avgDuration: number;
+};
+
+export async function getToolAnalytics(
+  projectId: string,
+): Promise<ToolAnalytics[]> {
+  const spans = await prisma.span.findMany({
+    where: {
+      trace: {
+        projectId,
+      },
+    },
+
+    select: {
+      traceId: true,
+      spanId: true,
+      parentSpanId: true,
+      name: true,
+      startTime: true,
+      endTime: true,
+      status: true,
+      attributes: true,
+      events: true,
+      resource: true,
+    },
+  });
+
+  const tools = new Map<
+    string,
+    {
+      calls: number;
+      successfulCalls: number;
+      failedCalls: number;
+      totalDuration: number;
+    }
+  >();
+
+  for (const span of spans) {
+    const rawSpan: RawSpan = {
+      traceId: span.traceId,
+      spanId: span.spanId,
+      parentSpanId: span.parentSpanId,
+      name: span.name,
+
+      startTime: span.startTime.toISOString(),
+      endTime: span.endTime.toISOString(),
+
+      status: normalizeStatus(span.status),
+      attributes: normalizeJsonRecord(
+        span.attributes,
+      ),
+      events: normalizeJsonArray(span.events),
+      resource: normalizeJsonRecord(
+        span.resource,
+      ),
+    };
+
+    const semanticSpan =
+      extractSemanticSpan(rawSpan);
+
+    if (semanticSpan.type !== "tool") {
+      continue;
+    }
+
+    const name = semanticSpan.name;
+
+    const duration =
+      span.endTime.getTime() -
+      span.startTime.getTime();
+
+    const failed =
+      semanticSpan.status === "ERROR";
+
+    const existing = tools.get(name);
+
+    if (existing) {
+      existing.calls++;
+      existing.totalDuration += duration;
+
+      if (failed) {
+        existing.failedCalls++;
+      } else {
+        existing.successfulCalls++;
+      }
+
+      continue;
+    }
+
+    tools.set(name, {
+      calls: 1,
+      successfulCalls: failed ? 0 : 1,
+      failedCalls: failed ? 1 : 0,
+      totalDuration: duration,
+    });
+  }
+
+  return Array.from(tools.entries())
+    .map(([name, data]) => ({
+      name,
+      calls: data.calls,
+      successfulCalls: data.successfulCalls,
+      failedCalls: data.failedCalls,
+
+      successRate:
+        data.calls === 0
+          ? 0
+          : Number(
+              (
+                (data.successfulCalls /
+                  data.calls) *
+                100
+              ).toFixed(2),
+            ),
+
+      avgDuration:
+        data.calls === 0
+          ? 0
+          : Math.round(
+              data.totalDuration /
+                data.calls,
+            ),
+    }))
+    .sort((a, b) => b.calls - a.calls);
+}
