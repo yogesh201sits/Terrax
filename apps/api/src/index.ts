@@ -8,6 +8,7 @@ import traces from "./routes/traces";
 import apiKeys from "./routes/api-keys";
 import dashboardTraces from "./routes/dashboard-traces";
 import notifications from "./routes/notifications";
+import analytics from "./routes/analytics";
 
 const app = new Hono<{
   Variables: AppVariables;
@@ -33,5 +34,6 @@ app.route("/v1", apiKeys);
 app.route("/v1", dashboardTraces);
 app.route("/v1", traces);
 app.route("/v1", notifications);
+app.route("/v1", analytics);
 
 export default app;
