@@ -1,15 +1,15 @@
 import {
   Activity,
-  Bot,
   CheckCircle2,
   Clock3,
+  Wrench,
 } from "lucide-react";
 
 import { AnalyticsStat } from "@/components/analytics/analytics-stat";
 
-interface AgentsStatsProps {
-  totalAgents: number;
-  totalRuns: number;
+interface ToolsStatsProps {
+  totalTools: number;
+  totalCalls: number;
   successRate: number;
   avgDuration: number;
 }
@@ -22,23 +22,23 @@ function formatDuration(ms: number) {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-export function AgentsStats({
-  totalAgents,
-  totalRuns,
+export function ToolsStats({
+  totalTools,
+  totalCalls,
   successRate,
   avgDuration,
-}: AgentsStatsProps) {
+}: ToolsStatsProps) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <AnalyticsStat
-        label="Agents"
-        value={totalAgents.toLocaleString()}
-        icon={Bot}
+        label="Tools"
+        value={totalTools.toLocaleString()}
+        icon={Wrench}
       />
 
       <AnalyticsStat
-        label="Runs"
-        value={totalRuns.toLocaleString()}
+        label="Calls"
+        value={totalCalls.toLocaleString()}
         icon={Activity}
       />
 

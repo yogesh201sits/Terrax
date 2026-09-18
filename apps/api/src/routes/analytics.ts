@@ -3,16 +3,48 @@ import { Hono } from "hono";
 import { prisma } from "@terrax/database";
 
 import { clerkAuthMiddleware } from "../middleware/clerk-auth";
-import { getAgentAnalytics } from "../services/analytics/analytics-service";
-import type { AppVariables } from "../types";
-import {getLlmAnalytics,} from "../services/analytics/analytics-service";
 import {
+  getAgentAnalytics,
+  getLlmAnalytics,
   getToolAnalytics,
+  type AnalyticsRange,
 } from "../services/analytics/analytics-service";
+import type { AppVariables } from "../types";
 
 const analytics = new Hono<{
   Variables: AppVariables;
 }>();
+
+const VALID_RANGES: AnalyticsRange[] = [
+  "24h",
+  "7d",
+  "30d",
+  "all",
+];
+
+function getRange(value?: string): AnalyticsRange {
+  if (
+    value &&
+    VALID_RANGES.includes(value as AnalyticsRange)
+  ) {
+    return value as AnalyticsRange;
+  }
+
+  return "24h";
+}
+
+function getLimit(value?: string): number {
+  const limit = Number(value ?? "20");
+
+  if (!Number.isFinite(limit)) {
+    return 20;
+  }
+
+  return Math.min(
+    Math.max(Math.floor(limit), 1),
+    100,
+  );
+}
 
 analytics.get(
   "/projects/:projectId/analytics/agents",
@@ -40,13 +72,21 @@ analytics.get(
       );
     }
 
-    const agents = await getAgentAnalytics(
-      projectId,
+    const range = getRange(
+      c.req.query("range"),
     );
 
-    return c.json({
-      agents,
-    });
+    const limit = getLimit(
+      c.req.query("limit"),
+    );
+
+    const result = await getAgentAnalytics(
+      projectId,
+      range,
+      limit,
+    );
+
+    return c.json(result);
   },
 );
 
@@ -112,13 +152,21 @@ analytics.get(
       );
     }
 
-    const tools = await getToolAnalytics(
-      projectId,
+    const range = getRange(
+      c.req.query("range"),
     );
 
-    return c.json({
-      tools,
-    });
+    const limit = getLimit(
+      c.req.query("limit"),
+    );
+
+    const result = await getToolAnalytics(
+      projectId,
+      range,
+      limit,
+    );
+
+    return c.json(result);
   },
 );
 

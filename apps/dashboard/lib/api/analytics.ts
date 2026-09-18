@@ -130,18 +130,15 @@ export interface ToolAnalyticsSummary {
 
 export interface ToolAnalytics {
   name: string;
-
   calls: number;
   successfulCalls: number;
   failedCalls: number;
   successRate: number;
-
   avgDuration: number;
   minDuration: number;
   maxDuration: number;
   p50Duration: number;
   p95Duration: number;
-
   firstSeen: string;
   lastSeen: string;
 }
