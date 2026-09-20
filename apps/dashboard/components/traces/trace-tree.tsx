@@ -8,12 +8,12 @@ import {
   Sparkles,
   Wrench,
   Activity,
-} from "lucide-react";
-
-import {
   ChevronDown,
   ChevronRight,
+  FlaskConical,
 } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 type Props = {
   roots: TraceTreeNode[];
@@ -21,13 +21,17 @@ type Props = {
 
 export function TraceTree({ roots }: Props) {
   const [selectedNode, setSelectedNode] =
-  useState<TraceTreeNode | null>(null);
+    useState<TraceTreeNode | null>(null);
+
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get("projectId");
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="rounded-lg border">
         <div className="border-b px-5 py-4">
           <h2 className="font-semibold">Execution</h2>
+
           <p className="mt-1 text-xs text-muted-foreground">
             Trace execution hierarchy
           </p>
@@ -47,7 +51,10 @@ export function TraceTree({ roots }: Props) {
         </div>
       </div>
 
-      <SpanDetails node={selectedNode} />
+      <SpanDetails
+        node={selectedNode}
+        projectId={projectId}
+      />
     </div>
   );
 }
@@ -111,7 +118,9 @@ function TraceTreeNodeView({
           {hasChildren ? (
             <button
               type="button"
-              onClick={() => setExpanded((value) => !value)}
+              onClick={() =>
+                setExpanded((value) => !value)
+              }
               className="flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
               aria-label={
                 expanded
@@ -199,7 +208,9 @@ function TraceTreeNodeView({
               depth={depth + 1}
               selectedSpanId={selectedSpanId}
               onSelect={onSelect}
-              isLast={index === node.children.length - 1}
+              isLast={
+                index === node.children.length - 1
+              }
             />
           ))}
         </div>
@@ -224,7 +235,7 @@ function SpanIcon({
   const Icon = icons[type];
 
   return (
-    <span className="flex size-6 shrink-0 items-center justify-center ">
+    <span className="flex size-6 shrink-0 items-center justify-center">
       <Icon
         className="size-3.5 text-muted-foreground"
         strokeWidth={1.8}
@@ -247,8 +258,10 @@ function SpanType({
 
 function SpanDetails({
   node,
+  projectId,
 }: {
   node: TraceTreeNode | null;
+  projectId: string | null;
 }) {
   const [activeTab, setActiveTab] = useState<
     "overview" | "input" | "output" | "details"
@@ -287,6 +300,17 @@ function SpanDetails({
     },
   ];
 
+  const playgroundHref =
+    projectId && span.type === "llm"
+      ? `/traces/${encodeURIComponent(
+          span.traceId,
+        )}/span/${encodeURIComponent(
+          span.spanId,
+        )}/playground?projectId=${encodeURIComponent(
+          projectId,
+        )}`
+      : null;
+
   return (
     <div className="h-fit rounded-lg border">
       {/* Header */}
@@ -306,11 +330,37 @@ function SpanDetails({
             </p>
           </div>
 
-          {span.errorMessage && (
-            <span className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium text-destructive">
-              ERROR
-            </span>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {playgroundHref && (
+              <Link
+                href={playgroundHref}
+                className="
+                  inline-flex
+                  h-8
+                  items-center
+                  gap-1.5
+                  rounded-md
+                  border
+                  px-2.5
+                  text-xs
+                  font-medium
+                  text-muted-foreground
+                  transition-colors
+                  hover:bg-muted
+                  hover:text-foreground
+                "
+              >
+                <FlaskConical className="size-3.5" />
+                Playground
+              </Link>
+            )}
+
+            {span.errorMessage && (
+              <span className="rounded-full border px-2 py-0.5 text-[10px] font-medium text-destructive">
+                ERROR
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -406,9 +456,7 @@ function OverviewTab({
       </div>
 
       {/* LLM Token Usage */}
-      {isLLM && (
-        <TokenStats span={span} />
-      )}
+      {isLLM && <TokenStats span={span} />}
 
       {/* Tool Calls */}
       {span.toolCalls &&
@@ -709,11 +757,16 @@ function JsonSection({
     value &&
     typeof value === "object" &&
     !Array.isArray(value)
-      ? Object.entries(value as Record<string, unknown>)
+      ? Object.entries(
+          value as Record<string, unknown>,
+        )
       : [];
 
-  const filteredEntries = entries.filter(([key]) =>
-    key.toLowerCase().includes(search.toLowerCase()),
+  const filteredEntries = entries.filter(
+    ([key]) =>
+      key
+        .toLowerCase()
+        .includes(search.toLowerCase()),
   );
 
   const visibleEntries = showAll
@@ -735,7 +788,9 @@ function JsonSection({
 
           <p className="mt-0.5 text-[10px] text-muted-foreground">
             {entries.length}{" "}
-            {entries.length === 1 ? "field" : "fields"}
+            {entries.length === 1
+              ? "field"
+              : "fields"}
           </p>
         </div>
 
@@ -749,7 +804,11 @@ function JsonSection({
         <div className="border-t p-3">
           {entries.length === 0 ? (
             <pre className="overflow-auto rounded-md bg-muted p-3 text-xs">
-              {JSON.stringify(value, null, 2)}
+              {JSON.stringify(
+                value,
+                null,
+                2,
+              )}
             </pre>
           ) : (
             <>
@@ -779,7 +838,9 @@ function JsonSection({
               {filteredEntries.length > 6 && (
                 <button
                   type="button"
-                  onClick={() => setShowAll(!showAll)}
+                  onClick={() =>
+                    setShowAll(!showAll)
+                  }
                   className="mt-2 w-full rounded-md border px-3 py-2 text-xs font-medium hover:bg-muted"
                 >
                   {showAll
@@ -804,7 +865,8 @@ function AttributeRow({
   name: string;
   value: unknown;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] =
+    useState(false);
 
   const isObject =
     value !== null &&
@@ -830,7 +892,11 @@ function AttributeRow({
 
           {expanded && (
             <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-[11px] whitespace-pre-wrap">
-              {JSON.stringify(value, null, 2)}
+              {JSON.stringify(
+                value,
+                null,
+                2,
+              )}
             </pre>
           )}
         </div>
@@ -838,10 +904,14 @@ function AttributeRow({
         {isObject && (
           <button
             type="button"
-            onClick={() => setExpanded(!expanded)}
+            onClick={() =>
+              setExpanded(!expanded)
+            }
             className="shrink-0 rounded-md border px-2 py-1 text-[10px] hover:bg-muted"
           >
-            {expanded ? "Collapse" : "Expand"}
+            {expanded
+              ? "Collapse"
+              : "Expand"}
           </button>
         )}
       </div>
@@ -849,7 +919,9 @@ function AttributeRow({
   );
 }
 
-function formatDuration(durationMs: number) {
+function formatDuration(
+  durationMs: number,
+) {
   if (durationMs < 1000) {
     return `${durationMs}ms`;
   }
