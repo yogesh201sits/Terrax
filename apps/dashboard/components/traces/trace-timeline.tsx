@@ -77,7 +77,7 @@ export function TraceTimeline({ roots }: Props) {
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-                <Activity className="size-3.5 text-muted-foreground" />
+              <Activity className="size-3.5 text-muted-foreground" />
 
               <h2 className="text-sm font-semibold tracking-tight">
                 Timeline
@@ -300,10 +300,12 @@ function TimelineRow({
           {/* Name */}
           <div className="min-w-0 flex-1">
             <Tooltip>
-              <TooltipTrigger>
-                <div className="cursor-default truncate text-left text-[11px] font-semibold tracking-tight">
-                  {span.name}
-                </div>
+              <TooltipTrigger
+                render={
+                  <div className="cursor-default truncate text-left text-[11px] font-semibold tracking-tight" />
+                }
+              >
+                {span.name}
               </TooltipTrigger>
 
               <TooltipContent
@@ -364,15 +366,15 @@ function TimelineRow({
 
                   isError
                     ? [
-                        "border-red-600/30",
-                        "bg-red-500",
-                        "shadow-[0_2px_6px_rgba(239,68,68,0.25)]",
-                      ].join(" ")
+                      "border-red-600/30",
+                      "bg-red-500",
+                      "shadow-[0_2px_6px_rgba(239,68,68,0.25)]",
+                    ].join(" ")
                     : [
-                        "border-emerald-600/30",
-                        "bg-emerald-500",
-                        "shadow-[0_2px_6px_rgba(16,185,129,0.22)]",
-                      ].join(" "),
+                      "border-emerald-600/30",
+                      "bg-emerald-500",
+                      "shadow-[0_2px_6px_rgba(16,185,129,0.22)]",
+                    ].join(" "),
                 ].join(" ")}
                 style={{
                   left: `${left}%`,

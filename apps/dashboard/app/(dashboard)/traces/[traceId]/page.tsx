@@ -6,6 +6,7 @@ import { TraceSummary } from "@/components/traces/trace-summary";
 import { TraceTreeSection } from "@/components/traces/TraceTreeSection";
 import { TraceExplorer } from "@/components/traces/trace-explorer";
 import { CopyTraceId } from "@/components/traces/copy-trace-id";
+import { SpanTable } from "@/components/traces/span-table";
 
 import type { TraceDetail } from "@/types/trace-detail";
 
@@ -217,6 +218,26 @@ export default async function TraceDetailPage({
         <section className="mt-5">
           <TraceSummary roots={roots} />
         </section>
+        {/* ================================================================ */}
+{/* Spans                                                            */}
+{/* ================================================================ */}
+
+<section className="mt-8">
+  <div className="mb-4">
+    <h2 className="text-base font-semibold tracking-tight">
+      Spans
+    </h2>
+
+    <p className="mt-1 text-xs text-muted-foreground">
+      Inspect individual operations within this trace.
+    </p>
+  </div>
+
+  <SpanTable
+    spans={spans.map((node) => node.span)}
+    projectId={activeProject.id}
+  />
+</section>
 
         {/* ================================================================ */}
         {/* Execution Tree                                                    */}
@@ -227,6 +248,8 @@ export default async function TraceDetailPage({
         {/* ================================================================ */}
         {/* Timeline / Graph                                                  */}
         {/* ================================================================ */}
+
+        
 
         <section className="mt-8">
           <div className="mb-4">
